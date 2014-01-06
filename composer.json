@@ -1,0 +1,26 @@
+
+{
+    "name": "codeguy/arachnid",
+    "type": "library",
+    "description": "A crawler to find all unique internal pages on a given website",
+    "keywords": ["crawl","spider","search","scrape"],
+    "homepage": "http://github.com/codeguy/arachnid",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Josh Lockhart",
+            "homepage": "http://www.joshlockhart.com/"
+        },
+        {
+            "name": "Zeid Rashwani",
+            "homepage": "http://zrashwani.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0",
+        "fabpot/goutte": "~1"
+    },
+    "autoload": {
+        "psr-0": { "Arachnid": "src" }
+    }
+}
