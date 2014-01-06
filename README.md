@@ -18,7 +18,7 @@ manifest file:
 
     {
         "require": {
-            "codeguy/arachnid": "~1"
+            "codeguy/arachnid": "1.*"
         }
     }
 
