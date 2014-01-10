@@ -91,8 +91,10 @@ class Crawler
     protected function traverseSingle($url, $depth)
     {
         try {
-            $client = new Client();
-            $crawler = $client->request('GET', $url);
+            $client = new Client();			
+			$client->followRedirects();
+			
+            $crawler = $client->request('GET', $url);			
             $statusCode = $client->getResponse()->getStatus();
 
             $this->links[$url]['status_code'] = $statusCode;
@@ -103,7 +105,7 @@ class Crawler
                 $childLinks = array();
                 if (isset($this->links[$url]['external_link']) === true && $this->links[$url]['external_link'] === false) {
                     $childLinks = $this->extractLinksInfo($crawler, $url);
-                }
+                }				
 
                 $this->links[$url]['visited'] = true;
                 $this->traverseChildren($childLinks, $depth - 1);
@@ -116,7 +118,7 @@ class Crawler
             $this->links[$url]['status_code'] = '404';
             $this->links[$url]['error_code'] = $e->getCode();
             $this->links[$url]['error_message'] = $e->getMessage();
-        }
+        }		
     }
 
     /**
@@ -141,7 +143,11 @@ class Crawler
                     $this->links[$uri]['frequency'] = isset($this->links[$uri]['frequency']) ? $this->links[$uri]['frequency'] + $oldFrequency : 1;
                 }
             }
-
+			
+			if(isset($this->links[$uri]['visited'])===false){
+				$this->links[$uri]['visited'] = false;
+			}
+			
             if (empty($uri) === false && $this->links[$uri]['visited'] === false && isset($this->links[$uri]['dont_visit']) === false) {
                 $this->traverseSingle($this->normalizeLink($childLinks[$uri]['absolute_url']), $depth);
             }
@@ -169,8 +175,14 @@ class Crawler
 
                 if ($node_url_is_crawlable === true) {
                     // Ensure URL is formatted as absolute
+										
                     if (preg_match("@^http(s)?@", $node_url) == false) {
-                        $childLinks[$hash]['absolute_url'] = $this->baseUrl . $node_url;
+						if(strpos($node_url,'/') ===0){
+							$parsed_url = parse_url($this->baseUrl);
+							$childLinks[$hash]['absolute_url'] = $parsed_url['scheme'].'://'.$parsed_url['host'].$node_url;
+						}else{
+							$childLinks[$hash]['absolute_url'] = $this->baseUrl . $node_url;
+						}
                     } else {
                         $childLinks[$hash]['absolute_url'] = $node_url;
                     }
@@ -228,8 +240,9 @@ class Crawler
         }
 
         $stop_links = array(
-            '@^javascript\:void\(0\)$@',
+            '@^javascript\:.*$@i',
             '@^#.*@',
+            '@^mailto\:.*@i',
         );
 
         foreach ($stop_links as $ptrn) {
