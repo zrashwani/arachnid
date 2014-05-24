@@ -102,7 +102,7 @@ class Crawler
             $hash = $this->getPathFromUrl($url);
             $this->links[$hash]['status_code'] = $statusCode;
 
-            if ($statusCode === 200) {
+            if ($statusCode === '200') {
                 $this->extractTitleInfo($crawler, $hash);
 
                 $childLinks = array();
