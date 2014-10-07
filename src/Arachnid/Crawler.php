@@ -103,15 +103,19 @@ class Crawler
             $this->links[$hash]['status_code'] = $statusCode;
 
             if ($statusCode === 200) {
-                $this->extractTitleInfo($crawler, $hash);
+                $content_type = $client->getResponse()->getHeader('Content-Type');
 
-                $childLinks = array();
-                if (isset($this->links[$hash]['external_link']) === true && $this->links[$hash]['external_link'] === false) {
-                    $childLinks = $this->extractLinksInfo($crawler, $hash);
+                if (strpos($content_type, 'text/html') !== false) { //traverse children in case the response in HTML document only
+                    $this->extractTitleInfo($crawler, $hash);
+
+                    $childLinks = array();
+                    if (isset($this->links[$hash]['external_link']) === true && $this->links[$hash]['external_link'] === false) {
+                        $childLinks = $this->extractLinksInfo($crawler, $hash);
+                    }
+
+                    $this->links[$hash]['visited'] = true;
+                    $this->traverseChildren($childLinks, $depth - 1);
                 }
-
-                $this->links[$hash]['visited'] = true;
-                $this->traverseChildren($childLinks, $depth - 1);
             }
         } catch (\Guzzle\Http\Exception\CurlException $e) {
             $this->links[$url]['status_code'] = '404';
