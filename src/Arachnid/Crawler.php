@@ -173,41 +173,41 @@ class Crawler
     {
         $childLinks = array();
         $crawler->filter('a')->each(function (\Symfony\Component\DomCrawler\Crawler $node, $i) use (&$childLinks) {
-                    $node_text = trim($node->text());
-                    $node_url = $node->attr('href');
-                    $node_url_is_crawlable = $this->checkIfCrawlable($node_url);
-                    $hash = $this->normalizeLink($node_url);
+            $node_text = trim($node->text());
+            $node_url = $node->attr('href');
+            $node_url_is_crawlable = $this->checkIfCrawlable($node_url);
+            $hash = $this->normalizeLink($node_url);
 
-                    if (isset($this->links[$hash]) === false) {
-                        $childLinks[$hash]['original_urls'][$node_url] = $node_url;
-                        $childLinks[$hash]['links_text'][$node_text] = $node_text;
+            if (isset($this->links[$hash]) === false) {
+                $childLinks[$hash]['original_urls'][$node_url] = $node_url;
+                $childLinks[$hash]['links_text'][$node_text] = $node_text;
 
-                        if ($node_url_is_crawlable === true) {
-                            // Ensure URL is formatted as absolute
+                if ($node_url_is_crawlable === true) {
+                    // Ensure URL is formatted as absolute
 
-                            if (preg_match("@^http(s)?@", $node_url) == false) {
-                                if (strpos($node_url, '/') === 0) {
-                                    $parsed_url = parse_url($this->baseUrl);
-                                    $childLinks[$hash]['absolute_url'] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $node_url;
-                                } else {
-                                    $childLinks[$hash]['absolute_url'] = $this->baseUrl . $node_url;
-                                }
-                            } else {
-                                $childLinks[$hash]['absolute_url'] = $node_url;
-                            }
-
-                            // Is this an external URL?
-                            $childLinks[$hash]['external_link'] = $this->checkIfExternal($childLinks[$hash]['absolute_url']);
-
-                            // Additional metadata
-                            $childLinks[$hash]['visited'] = false;
-                            $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
+                    if (preg_match("@^http(s)?@", $node_url) == false) {
+                        if (strpos($node_url, '/') === 0) {
+                            $parsed_url = parse_url($this->baseUrl);
+                            $childLinks[$hash]['absolute_url'] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $node_url;
                         } else {
-                            $childLinks[$hash]['dont_visit'] = true;
-                            $childLinks[$hash]['external_link'] = false;
+                            $childLinks[$hash]['absolute_url'] = $this->baseUrl . $node_url;
                         }
+                    } else {
+                        $childLinks[$hash]['absolute_url'] = $node_url;
                     }
-                });
+
+                    // Is this an external URL?
+                    $childLinks[$hash]['external_link'] = $this->checkIfExternal($childLinks[$hash]['absolute_url']);
+
+                    // Additional metadata
+                    $childLinks[$hash]['visited'] = false;
+                    $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
+                } else {
+                    $childLinks[$hash]['dont_visit'] = true;
+                    $childLinks[$hash]['external_link'] = false;
+                }
+            }
+        });
 
         // Avoid cyclic loops with pages that link to themselves
         if (isset($childLinks[$url]) === true) {
@@ -232,8 +232,8 @@ class Crawler
 
         if ($h1_count > 0) {
             $crawler->filter('h1')->each(function (\Symfony\Component\DomCrawler\Crawler $node, $i) use ($url) {
-                        $this->links[$url]['h1_contents'][$i] = trim($node->text());
-                    });
+                $this->links[$url]['h1_contents'][$i] = trim($node->text());
+            });
         }
     }
 
@@ -280,15 +280,16 @@ class Crawler
      * @param  string $url
      * @return string
      */
-    protected function normalizeLink($uri)
+    protected function normalizeLink($url)
     {
-        return preg_replace('@#.*$@', '', $uri);
+        return preg_replace('@#.*$@', '', $url);
     }
 
     /**
-     * extrating the relative path from url string
-     * @param  type $url
-     * @return type
+     * Extracting the relative path from url string
+     *
+     * @param  string $url
+     * @return string
      */
     protected function getPathFromUrl($url)
     {
