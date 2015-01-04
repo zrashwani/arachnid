@@ -62,7 +62,7 @@ All pull requests must adhere to the [PSR-2 standard][psr2].
 
 ## License
 
-MIT Publice License
+MIT Public License
 
 [composer]: http://getcomposer.org/
 [psr2]: https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md
