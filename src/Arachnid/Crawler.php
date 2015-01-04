@@ -3,6 +3,8 @@
 namespace Arachnid;
 
 use Goutte\Client;
+use Guzzle\Http\Exception\CurlException;
+use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 
 /**
  * Crawler
@@ -117,7 +119,7 @@ class Crawler
                     $this->traverseChildren($childLinks, $depth - 1);
                 }
             }
-        } catch (\Guzzle\Http\Exception\CurlException $e) {
+        } catch (CurlException $e) {
             $this->links[$url]['status_code'] = '404';
             $this->links[$url]['error_code'] = $e->getCode();
             $this->links[$url]['error_message'] = $e->getMessage();
@@ -169,10 +171,10 @@ class Crawler
      * @param  string                                $url
      * @return array
      */
-    protected function extractLinksInfo(\Symfony\Component\DomCrawler\Crawler $crawler, $url)
+    protected function extractLinksInfo(DomCrawler $crawler, $url)
     {
         $childLinks = array();
-        $crawler->filter('a')->each(function (\Symfony\Component\DomCrawler\Crawler $node, $i) use (&$childLinks) {
+        $crawler->filter('a')->each(function (DomCrawler $node, $i) use (&$childLinks) {
                     $node_text = trim($node->text());
                     $node_url = $node->attr('href');
                     $node_url_is_crawlable = $this->checkIfCrawlable($node_url);
@@ -222,7 +224,7 @@ class Crawler
      * @param \Symfony\Component\DomCrawler\Crawler $crawler
      * @param string                                $url
      */
-    protected function extractTitleInfo(\Symfony\Component\DomCrawler\Crawler $crawler, $url)
+    protected function extractTitleInfo(DomCrawler $crawler, $url)
     {
         $this->links[$url]['title'] = trim($crawler->filterXPath('html/head/title')->text());
 
@@ -231,7 +233,7 @@ class Crawler
         $this->links[$url]['h1_contents'] = array();
 
         if ($h1_count > 0) {
-            $crawler->filter('h1')->each(function (\Symfony\Component\DomCrawler\Crawler $node, $i) use ($url) {
+            $crawler->filter('h1')->each(function (DomCrawler $node, $i) use ($url) {
                         $this->links[$url]['h1_contents'][$i] = trim($node->text());
                     });
         }
