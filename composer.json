@@ -17,7 +17,7 @@
     ],
     "require": {
         "php": ">=5.4.0",
-        "fabpot/goutte": "~1"
+        "fabpot/goutte": "^3.1"
     },
     "autoload": {
         "psr-0": { "Arachnid": "src" }
