@@ -257,6 +257,7 @@ class Crawler
             '@^javascript\:.*$@i',
             '@^#.*@',
             '@^mailto\:.*@i',
+            '@^tel\:.*@i',
         );
 
         foreach ($stop_links as $ptrn) {
