@@ -2,7 +2,7 @@
 
 namespace Arachnid;
 
-use Goutte\Client;
+use Goutte\Client as GoutteClient;
 use Guzzle\Http\Exception\CurlException;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 
@@ -95,8 +95,7 @@ class Crawler
     protected function traverseSingle($url, $depth)
     {
         try {
-            $client = new Client();
-            $client->followRedirects();
+            $client = $this->getScrapClient();
 
             $crawler = $client->request('GET', $url);
             $statusCode = $client->getResponse()->getStatus();
@@ -128,6 +127,26 @@ class Crawler
             $this->links[$url]['error_code'] = $e->getCode();
             $this->links[$url]['error_message'] = $e->getMessage();
         }
+    }
+
+    /**
+     * create and configure goutte client used for scraping
+     * @return GoutteClient
+     */
+    protected function getScrapClient()
+    {
+        $client = new GoutteClient();
+        $client->followRedirects();
+
+        $guzzleClient = new \GuzzleHttp\Client(array(
+            'curl' => array(
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ),
+        ));
+        $client->setClient($guzzleClient);
+
+        return $client;
     }
 
     /**
@@ -175,41 +194,41 @@ class Crawler
     {
         $childLinks = array();
         $crawler->filter('a')->each(function (DomCrawler $node, $i) use (&$childLinks) {
-                    $node_text = trim($node->text());
-                    $node_url = $node->attr('href');
-                    $node_url_is_crawlable = $this->checkIfCrawlable($node_url);
-                    $hash = $this->normalizeLink($node_url);
+            $node_text = trim($node->text());
+            $node_url = $node->attr('href');
+            $node_url_is_crawlable = $this->checkIfCrawlable($node_url);
+            $hash = $this->normalizeLink($node_url);
 
-                    if (isset($this->links[$hash]) === false) {
-                        $childLinks[$hash]['original_urls'][$node_url] = $node_url;
-                        $childLinks[$hash]['links_text'][$node_text] = $node_text;
+            if (isset($this->links[$hash]) === false) {
+                $childLinks[$hash]['original_urls'][$node_url] = $node_url;
+                $childLinks[$hash]['links_text'][$node_text] = $node_text;
 
-                        if ($node_url_is_crawlable === true) {
-                            // Ensure URL is formatted as absolute
+                if ($node_url_is_crawlable === true) {
+                    // Ensure URL is formatted as absolute
 
-                            if (preg_match("@^http(s)?@", $node_url) == false) {
-                                if (strpos($node_url, '/') === 0) {
-                                    $parsed_url = parse_url($this->baseUrl);
-                                    $childLinks[$hash]['absolute_url'] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $node_url;
-                                } else {
-                                    $childLinks[$hash]['absolute_url'] = $this->baseUrl . $node_url;
-                                }
-                            } else {
-                                $childLinks[$hash]['absolute_url'] = $node_url;
-                            }
-
-                            // Is this an external URL?
-                            $childLinks[$hash]['external_link'] = $this->checkIfExternal($childLinks[$hash]['absolute_url']);
-
-                            // Additional metadata
-                            $childLinks[$hash]['visited'] = false;
-                            $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
+                    if (preg_match("@^http(s)?@", $node_url) == false) {
+                        if (strpos($node_url, '/') === 0) {
+                            $parsed_url = parse_url($this->baseUrl);
+                            $childLinks[$hash]['absolute_url'] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $node_url;
                         } else {
-                            $childLinks[$hash]['dont_visit'] = true;
-                            $childLinks[$hash]['external_link'] = false;
+                            $childLinks[$hash]['absolute_url'] = $this->baseUrl . $node_url;
                         }
+                    } else {
+                        $childLinks[$hash]['absolute_url'] = $node_url;
                     }
-                });
+
+                    // Is this an external URL?
+                    $childLinks[$hash]['external_link'] = $this->checkIfExternal($childLinks[$hash]['absolute_url']);
+
+                    // Additional metadata
+                    $childLinks[$hash]['visited'] = false;
+                    $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
+                } else {
+                    $childLinks[$hash]['dont_visit'] = true;
+                    $childLinks[$hash]['external_link'] = false;
+                }
+            }
+        });
 
         // Avoid cyclic loops with pages that link to themselves
         if (isset($childLinks[$url]) === true) {
@@ -226,10 +245,10 @@ class Crawler
      */
     protected function extractTitleInfo(DomCrawler $crawler, $url)
     {
-		$crawler->filterXPath('//head//title')->each(function(DomCrawler $node) use($url){
-				$this->links[$url]['title'] = trim($node->text());
-		});
-        
+        $crawler->filterXPath('//head//title')->each(function (DomCrawler $node) use ($url) {
+            $this->links[$url]['title'] = trim($node->text());
+        });
+
 
         $h1_count = $crawler->filter('h1')->count();
         $this->links[$url]['h1_count'] = $h1_count;
@@ -237,8 +256,8 @@ class Crawler
 
         if ($h1_count > 0) {
             $crawler->filter('h1')->each(function (DomCrawler $node, $i) use ($url) {
-                        $this->links[$url]['h1_contents'][$i] = trim($node->text());
-                    });
+                $this->links[$url]['h1_contents'][$i] = trim($node->text());
+            });
         }
     }
 
@@ -299,10 +318,9 @@ class Crawler
     protected function getPathFromUrl($url)
     {
         if (strpos($url, $this->baseUrl) === 0 && $url !== $this->baseUrl) {
-            return str_replace($this->baseUrl,'', $url);
+            return str_replace($this->baseUrl, '', $url);
         } else {
             return $url;
         }
     }
-
 }
