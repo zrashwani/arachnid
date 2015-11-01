@@ -226,7 +226,10 @@ class Crawler
      */
     protected function extractTitleInfo(DomCrawler $crawler, $url)
     {
-        $this->links[$url]['title'] = trim($crawler->filterXPath('html/head/title')->text());
+		$crawler->filterXPath('//head//title')->each(function(DomCrawler $node) use($url){
+				$this->links[$url]['title'] = trim($node->text());
+		});
+        
 
         $h1_count = $crawler->filter('h1')->count();
         $this->links[$url]['h1_count'] = $h1_count;
