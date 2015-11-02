@@ -23,7 +23,7 @@ use Symfony\Component\DomCrawler\Crawler as DomCrawler;
  * @package Crawler
  * @author  Josh Lockhart <https://github.com/codeguy>
  * @author  Zeid Rashwani <http://zrashwani.com>
- * @version 1.0.0
+ * @version 1.0.4
  */
 class Crawler
 {
