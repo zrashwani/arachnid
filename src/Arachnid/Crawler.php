@@ -206,7 +206,7 @@ class Crawler
                 if ($node_url_is_crawlable === true) {
                     // Ensure URL is formatted as absolute
 
-                    if (preg_match("@^http(s)?@", $node_url) == false) {
+                    if (preg_match("@^http(s)?@", $node_url) !== 1) {
                         if (strpos($node_url, '/') === 0) {
                             $parsed_url = parse_url($this->baseUrl);
                             $childLinks[$hash]['absolute_url'] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $node_url;
@@ -281,7 +281,7 @@ class Crawler
         );
 
         foreach ($stop_links as $ptrn) {
-            if (preg_match($ptrn, $uri) == true) {
+            if (preg_match($ptrn, $uri) === 1) {
                 return false;
             }
         }
@@ -298,7 +298,7 @@ class Crawler
     {
         $base_url_trimmed = str_replace(array('http://', 'https://'), '', $this->baseUrl);
 
-        return preg_match("@http(s)?\://$base_url_trimmed@", $url) == false;
+        return preg_match("@http(s)?\://$base_url_trimmed@", $url) !== 1;
     }
 
     /**
