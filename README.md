@@ -53,7 +53,7 @@ All pull requests must adhere to the [PSR-2 standard][psr2].
 
 ## System Requirements
 
-* PHP 5.3.0+
+* PHP 5.4.0+
 
 ## Authors
 
