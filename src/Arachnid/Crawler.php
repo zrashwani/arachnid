@@ -211,7 +211,7 @@ class Crawler
                             $parsed_url = parse_url($this->baseUrl);
                             $childLinks[$hash]['absolute_url'] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $node_url;
                         } else {
-                            $childLinks[$hash]['absolute_url'] = $this->baseUrl . $node_url;
+                            $childLinks[$hash]['absolute_url'] = substr($this->baseUrl, 0, strrpos( $this->baseUrl, '/')) . '/' . $node_url;
                         }
                     } else {
                         $childLinks[$hash]['absolute_url'] = $node_url;
