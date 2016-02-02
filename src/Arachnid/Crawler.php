@@ -298,6 +298,8 @@ class Crawler
     {
         $base_url_trimmed = str_replace(array('http://', 'https://'), '', $this->baseUrl);
 
+        $base_url_trimmed = explode('/', $base_url_trimmed)[0];
+
         return preg_match("@http(s)?\://$base_url_trimmed@", $url) !== 1;
     }
 
