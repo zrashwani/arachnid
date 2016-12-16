@@ -3,6 +3,7 @@
 namespace Arachnid;
 
 use Goutte\Client as GoutteClient;
+use Symfony\Component\BrowserKit\Client as ScrapClient;
 use Guzzle\Http\Exception\CurlException;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 
@@ -27,6 +28,13 @@ use Symfony\Component\DomCrawler\Crawler as DomCrawler;
  */
 class Crawler
 {
+
+    /**
+     * scrap client used for crawling the files, can be either Goutte or local file system
+     * @var ScrapClient $scrapClient
+     */
+    protected $scrapClient;
+
     /**
      * The base URL from which the crawler begins crawling
      * @var string
@@ -46,15 +54,28 @@ class Crawler
     protected $links;
 
     /**
+     * whether file to be crawled is local file or remote one
+     * @var boolean 
+     */
+    protected $localFile;
+    
+    /**
+     * callable for filtering specific links and prevent crawling others
+     * @var \Closure
+     */
+    protected $filterCallback;
+
+    /**
      * Constructor
      * @param string $baseUrl
      * @param int    $maxDepth
      */
-    public function __construct($baseUrl, $maxDepth = 3)
+    public function __construct($baseUrl, $maxDepth = 3, $localFile = false)
     {
         $this->baseUrl = $baseUrl;
         $this->maxDepth = $maxDepth;
         $this->links = array();
+        $this->localFile  = $localFile;
     }
 
     /**
@@ -94,10 +115,14 @@ class Crawler
      */
     protected function traverseSingle($url, $depth)
     {
+        if($depth<1){
+            return;
+        }
+        dump('crawling '.$url.' depth='.$depth);
         try {
             $client = $this->getScrapClient();
 
-            $crawler = $client->request('GET', $url);
+            $crawler = $client->request('GET', $url);                    
             $statusCode = $client->getResponse()->getStatus();
 
             $hash = $this->getPathFromUrl($url);
@@ -110,12 +135,14 @@ class Crawler
                     $this->extractTitleInfo($crawler, $hash);
 
                     $childLinks = array();
-                    if (isset($this->links[$hash]['external_link']) === true && $this->links[$hash]['external_link'] === false) {
+                    if (isset($this->links[$hash]['external_link']) === true 
+                            && $this->links[$hash]['external_link'] === false) {
                         $childLinks = $this->extractLinksInfo($crawler, $hash);
                     }
 
                     $this->links[$hash]['visited'] = true;
                     $this->traverseChildren($childLinks, $depth - 1);
+                    
                 }
             }
         } catch (CurlException $e) {
@@ -125,28 +152,48 @@ class Crawler
         } catch (\Exception $e) {
             $this->links[$url]['status_code'] = '404';
             $this->links[$url]['error_code'] = $e->getCode();
-            $this->links[$url]['error_message'] = $e->getMessage();
+            $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
         }
     }
 
     /**
-     * create and configure goutte client used for scraping
+     * create and configure goutte client used for scraping     
      * @return GoutteClient
      */
-    protected function getScrapClient()
-    {
-        $client = new GoutteClient();
-        $client->followRedirects();
+    public function getScrapClient()
+    {        
+        if(!$this->scrapClient){
+            if($this->localFile ===false){
+                //default client will be Goutte php Scrapper
+                $client = new GoutteClient();
+                $client->followRedirects();
+                $cookieName = time()."_".substr(md5(microtime()),0,5).".txt"; 
 
-        $guzzleClient = new \GuzzleHttp\Client(array(
-            'curl' => array(
-                CURLOPT_SSL_VERIFYHOST => false,
-                CURLOPT_SSL_VERIFYPEER => false,
-            ),
-        ));
-        $client->setClient($guzzleClient);
+                $guzzleClient = new \GuzzleHttp\Client(array(
+                    'curl' => array(
+                        CURLOPT_SSL_VERIFYHOST => false,
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_COOKIEJAR      => $cookieName,
+                        CURLOPT_COOKIEFILE     => $cookieName,
+                    ),
+                ));
+               $client->setClient($guzzleClient);
+            }else{
+                //local file system crawler
+                $client = new Clients\FilesystemClient(); 
+            }
+            $this->scrapClient = $client;
+        }
 
-        return $client;
+        return $this->scrapClient;
+    }
+
+    public function setScrapClient($client){
+        $this->scrapClient = $client;
+    }
+    
+    public function filterLinks(\Closure $filterCallback){
+        $this->filterCallback = $filterCallback;
     }
 
     /**
@@ -156,11 +203,8 @@ class Crawler
      */
     protected function traverseChildren($childLinks, $depth)
     {
-        if ($depth === 0) {
-            return;
-        }
-
         foreach ($childLinks as $url => $info) {
+            $filterCallback = $this->filterCallback;
             $hash = $this->getPathFromUrl($url);
 
             if (isset($this->links[$hash]) === false) {
@@ -179,7 +223,12 @@ class Crawler
             }
 
             if (empty($url) === false && $this->links[$hash]['visited'] === false && isset($this->links[$hash]['dont_visit']) === false) {
-                $this->traverseSingle($this->normalizeLink($childLinks[$url]['absolute_url']), $depth);
+                $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);
+                if($filterCallback && $filterCallback($normalizedUrl)===false){
+                    dump('skipping link not match filter criteria '.$normalizedUrl);
+                    return;
+                }                
+                $this->traverseSingle($normalizedUrl, $depth-1);
             }
         }
     }
@@ -194,27 +243,35 @@ class Crawler
     {
         $childLinks = array();
         $crawler->filter('a')->each(function (DomCrawler $node, $i) use (&$childLinks) {
-            $node_text = trim($node->text());
-            $node_url = $node->attr('href');
-            $node_url_is_crawlable = $this->checkIfCrawlable($node_url);
-            $hash = $this->normalizeLink($node_url);
+            $nodeText = trim($node->text());
+            $nodeUrl = $node->attr('href');
+            $nodeUrlIsCrawlable = $this->checkIfCrawlable($nodeUrl);
+            
+            if($this->filterCallback){
+                $callback = $this->filterCallback;
+                if($callback($nodeUrl)===false){ //link is filtered out
+                    dump('skipping '.$nodeUrl.' not matching callback criteria');
+                    return;
+                }
+            }
+            
+            $normalizedLink = $this->normalizeLink($nodeUrl);            
+            $hash = $this->getAbsoluteUrl($normalizedLink);
 
             if (isset($this->links[$hash]) === false) {
-                $childLinks[$hash]['original_urls'][$node_url] = $node_url;
-                $childLinks[$hash]['links_text'][$node_text] = $node_text;
+                $childLinks[$hash]['original_urls'][$nodeUrl] = $nodeUrl;
+                $childLinks[$hash]['links_text'][$nodeText] = $nodeText;
 
-                if ($node_url_is_crawlable === true) {
-                    // Ensure URL is formatted as absolute
-
-                    if (preg_match("@^http(s)?@", $node_url) !== 1) {
-                        if (strpos($node_url, '/') === 0) {
-                            $parsed_url = parse_url($this->baseUrl);
-                            $childLinks[$hash]['absolute_url'] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $node_url;
+                if ($nodeUrlIsCrawlable === true) {
+                    // Ensure URL is formatted as absolute                    
+                    if (preg_match("@^http(s)\:@", $nodeUrl) !== 1) {
+                        if (strpos($nodeUrl, '/') === 0) {                         
+                            $childLinks[$hash]['absolute_url'] = $this->getAbsoluteUrl($nodeUrl);                            
                         } else {
-                            $childLinks[$hash]['absolute_url'] = substr($this->baseUrl, 0, strrpos( $this->baseUrl, '/')) . '/' . $node_url;
+                            $childLinks[$hash]['absolute_url'] = substr($this->baseUrl, 0, strrpos( $this->baseUrl, '/')) . '/' . $nodeUrl;
                         }
                     } else {
-                        $childLinks[$hash]['absolute_url'] = $node_url;
+                        $childLinks[$hash]['absolute_url'] = $nodeUrl;
                     }
 
                     // Is this an external URL?
@@ -278,6 +335,7 @@ class Crawler
             '@^mailto\:.*@i',
             '@^tel\:.*@i',
             '@^fax\:.*@i',
+            '@.*(\.pdf)$@i'
         );
 
         foreach ($stop_links as $ptrn) {
@@ -285,7 +343,7 @@ class Crawler
                 return false;
             }
         }
-
+        
         return true;
     }
 
@@ -297,7 +355,6 @@ class Crawler
     protected function checkIfExternal($url)
     {
         $base_url_trimmed = str_replace(array('http://', 'https://'), '', $this->baseUrl);
-
         $base_url_trimmed = explode('/', $base_url_trimmed)[0];
 
         return preg_match("@http(s)?\://$base_url_trimmed@", $url) !== 1;
@@ -326,4 +383,24 @@ class Crawler
             return $url;
         }
     }
+
+    protected function getAbsoluteUrl($nodeUrl){
+        $urlParts = parse_url($this->baseUrl);        
+        
+        if(strpos($nodeUrl,'//') === 0){
+                $ret = (isset($urlParts['scheme'])=== true?
+                        $urlParts['scheme']:'http').':'.$nodeUrl;            
+        }elseif(isset($urlParts['scheme'])){            
+            if(strpos($nodeUrl,'http://')===0 || strpos($nodeUrl,'https://')===0){
+                $ret = $nodeUrl;
+            }else{
+                $ret = $urlParts['scheme'] . '://' . $urlParts['host'] . $nodeUrl;
+            }
+        }else{
+            $ret = $nodeUrl;
+        }
+        
+        return $ret;
+    }
+    
 }
