@@ -6,6 +6,7 @@ use Goutte\Client as GoutteClient;
 use Symfony\Component\BrowserKit\Client as ScrapClient;
 use Guzzle\Http\Exception\CurlException;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
+use Psr\Log\LogLevel;
 
 /**
  * Crawler
@@ -66,6 +67,12 @@ class Crawler
     protected $filterCallback;
 
     /**
+     * set logger to the crawler
+     * @var \Psr\Log\LoggerInterface
+     */
+    protected $logger;
+
+    /**
      * Constructor
      * @param string $baseUrl
      * @param int    $maxDepth
@@ -118,7 +125,16 @@ class Crawler
         if($depth<1){
             return;
         }
-        dump('crawling '.$url.' depth='.$depth);
+        if($this->filterCallback){
+            $filter_links = $this->filterCallback;
+            if(!$filter_links($url)){
+                //skipping url '.$url.' not matching filter criteria
+                $this->log(LogLevel::INFO,'skipping url '.$url.' not matching filter criteria', ['depth'=>$depth]);
+                return;
+            }
+        }
+        $this->log(LogLevel::INFO,'crawling '.$url, ['depth'=>$depth]);
+
         try {
             $client = $this->getScrapClient();
 
@@ -127,6 +143,7 @@ class Crawler
 
             $hash = $this->getPathFromUrl($url);
             $this->links[$hash]['status_code'] = $statusCode;
+            $this->log(LogLevel::INFO,'crawled '.$url.' code='.$statusCode);
 
             if ($statusCode === 200) {
                 $content_type = $client->getResponse()->getHeader('Content-Type');
@@ -201,12 +218,16 @@ class Crawler
      * @param array $childLinks
      * @param int   $depth
      */
-    protected function traverseChildren($childLinks, $depth)
+    public function traverseChildren($childLinks, $depth)
     {
         foreach ($childLinks as $url => $info) {
             $filterCallback = $this->filterCallback;
             $hash = $this->getPathFromUrl($url);
-
+            
+            if($filterCallback && $filterCallback($url)===false){                    
+                    $this->log(LogLevel::INFO,'skipping link not match filter criteria '.$url);
+                    return;
+            }          
             if (isset($this->links[$hash]) === false) {
                 $this->links[$hash] = $info;
             } else {
@@ -223,11 +244,7 @@ class Crawler
             }
 
             if (empty($url) === false && $this->links[$hash]['visited'] === false && isset($this->links[$hash]['dont_visit']) === false) {
-                $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);
-                if($filterCallback && $filterCallback($normalizedUrl)===false){
-                    dump('skipping link not match filter criteria '.$normalizedUrl);
-                    return;
-                }                
+                $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);      
                 $this->traverseSingle($normalizedUrl, $depth-1);
             }
         }
@@ -239,21 +256,14 @@ class Crawler
      * @param  string                                $url
      * @return array
      */
-    protected function extractLinksInfo(DomCrawler $crawler, $url)
+    public function extractLinksInfo(DomCrawler $crawler, $url)
     {
         $childLinks = array();
         $crawler->filter('a')->each(function (DomCrawler $node, $i) use (&$childLinks) {
             $nodeText = trim($node->text());
             $nodeUrl = $node->attr('href');
             $nodeUrlIsCrawlable = $this->checkIfCrawlable($nodeUrl);
-            
-            if($this->filterCallback){
-                $callback = $this->filterCallback;
-                if($callback($nodeUrl)===false){ //link is filtered out
-                    dump('skipping '.$nodeUrl.' not matching callback criteria');
-                    return;
-                }
-            }
+
             
             $normalizedLink = $this->normalizeLink($nodeUrl);            
             $hash = $this->getAbsoluteUrl($normalizedLink);
@@ -281,6 +291,7 @@ class Crawler
                     $childLinks[$hash]['visited'] = false;
                     $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
                 } else {
+                    $childLinks[$hash]['visited'] = false;
                     $childLinks[$hash]['dont_visit'] = true;
                     $childLinks[$hash]['external_link'] = false;
                 }
@@ -293,6 +304,14 @@ class Crawler
         }
 
         return $childLinks;
+    }
+
+    /**
+     * set logger to the crawler
+     * @param $logger \Psr\Log\LoggerInterface
+     */
+    public function setLogger($logger){
+        $this->logger = $logger;
     }
 
     /**
@@ -360,6 +379,12 @@ class Crawler
         return preg_match("@http(s)?\://$base_url_trimmed@", $url) !== 1;
     }
 
+    protected function log($level, $message, array $context = array()){
+        if(isset($this->logger) === true){
+            $this->logger->log($level, $message,$context);
+        }
+    }
+
     /**
      * Normalize link (remove hash, etc.)
      * @param  string $url
@@ -377,13 +402,34 @@ class Crawler
      */
     protected function getPathFromUrl($url)
     {
-        if (strpos($url, $this->baseUrl) === 0 && $url !== $this->baseUrl) {
-            return str_replace($this->baseUrl, '', $url);
-        } else {
-            return $url;
+        if($this->localFile === true){
+            $trimmedPath = rtrim($this->baseUrl, '/');
+            if(strpos($url,'/')===0){           
+                $ret = substr($trimmedPath,0,strrpos($trimmedPath,'/')).$url;
+            }else{
+                $ret = $trimmedPath.'/'.$url;
+            }            
+        }else{
+            $schemaAndHost = parse_url($this->baseUrl, PHP_URL_SCHEME).'://'.
+                parse_url($this->baseUrl, PHP_URL_HOST);        
+            dump($schemaAndHost);
+            dump($url);
+            if (strpos($url, $schemaAndHost) === 0 && $url !== $schemaAndHost) {
+                $ret = str_replace($schemaAndHost, '', $url);
+            } else {
+                $ret = $url;
+            }
+            dump($ret);
+            dump('++++++');
         }
+        return $ret;
     }
 
+    /** 
+     * converting nodeUrl to absolute url form
+     * @param string $nodeUrl
+     * @return string
+     */
     protected function getAbsoluteUrl($nodeUrl){
         $urlParts = parse_url($this->baseUrl);        
         
