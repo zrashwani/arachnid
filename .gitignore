@@ -1,3 +1,5 @@
 vendor
 composer.lock
-test/
+/nbproject/private/
+/phpunit.xml
+/coverage/

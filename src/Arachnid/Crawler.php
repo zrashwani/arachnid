@@ -126,8 +126,8 @@ class Crawler
             return;
         }
         if($this->filterCallback){
-            $filter_links = $this->filterCallback;
-            if(!$filter_links($url)){
+            $filterLinks = $this->filterCallback;
+            if(!$filterLinks($url)){
                 //skipping url '.$url.' not matching filter criteria
                 $this->log(LogLevel::INFO,'skipping url '.$url.' not matching filter criteria', ['depth'=>$depth]);
                 return;
@@ -141,7 +141,11 @@ class Crawler
             $crawler = $client->request('GET', $url);                    
             $statusCode = $client->getResponse()->getStatus();
 
-            $hash = $this->getPathFromUrl($url);
+            if($url == $this->baseUrl){
+                $hash = $url;
+            }else{
+                $hash = $this->getPathFromUrl($url);            
+            }
             $this->links[$hash]['status_code'] = $statusCode;
             $this->log(LogLevel::INFO,'crawled '.$url.' code='.$statusCode);
 
@@ -162,14 +166,33 @@ class Crawler
                     
                 }
             }
-        } catch (CurlException $e) {
-            $this->links[$url]['status_code'] = '404';
-            $this->links[$url]['error_code'] = $e->getCode();
-            $this->links[$url]['error_message'] = $e->getMessage();
+        } catch (\Guzzle\Http\Exception\CurlException $e) {
+            if($filterLinks && $filterLinks($url) === false){
+                $this->log(LogLevel::INFO, 'skipping storing broken link'.$url.' not matching filter criteria');
+            }else{
+                $this->links[$url]['status_code'] = '404';
+                $this->links[$url]['error_code'] = $e->getCode();
+                $this->links[$url]['error_message'] = $e->getMessage();
+                $this->log(LogLevel::ERROR,'broken link detected '.$url.' code='.$e->getCode()); 
+            }
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            if($filterLinks && $filterLinks($url) === false){
+                $this->log(LogLevel::INFO, 'skipping storing broken link'.$url.' not matching filter criteria');
+            }else{            
+                $this->links[$url]['status_code'] = $e->getResponse()->getStatusCode();
+                $this->links[$url]['error_code'] = $e->getCode();
+                $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
+                $this->log(LogLevel::ERROR,'broken link detected '.$url.' code='.$e->getResponse()->getStatusCode()); 
+            }
         } catch (\Exception $e) {
-            $this->links[$url]['status_code'] = '404';
-            $this->links[$url]['error_code'] = $e->getCode();
-            $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
+            if($filterLinks && $filterLinks($url) === false){
+                $this->log(LogLevel::INFO, 'skipping storing broken link'.$url.' not matching filter criteria');
+            }else{            
+                $this->links[$url]['status_code'] = '404';
+                $this->links[$url]['error_code'] = $e->getCode();
+                $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
+                $this->log(LogLevel::ERROR,'broken link detected '.$url.' code='.$e->getCode()); 
+            }
         }
     }
 
@@ -267,6 +290,11 @@ class Crawler
             
             $normalizedLink = $this->normalizeLink($nodeUrl);            
             $hash = $this->getAbsoluteUrl($normalizedLink);
+            $filterLinks = $this->filterCallback;            
+            if($filterLinks && $filterLinks($hash) === false){
+                $this->log(LogLevel::INFO, 'skipping '.$hash. ' not matching filter criteira');
+                return;
+            }
 
             if (isset($this->links[$hash]) === false) {
                 $childLinks[$hash]['original_urls'][$nodeUrl] = $nodeUrl;
@@ -412,15 +440,15 @@ class Crawler
         }else{
             $schemaAndHost = parse_url($this->baseUrl, PHP_URL_SCHEME).'://'.
                 parse_url($this->baseUrl, PHP_URL_HOST);        
-            dump($schemaAndHost);
-            dump($url);
+            
             if (strpos($url, $schemaAndHost) === 0 && $url !== $schemaAndHost) {
                 $ret = str_replace($schemaAndHost, '', $url);
+            } elseif(strpos($url,'/')!==0) {
+                $path = rtrim(parse_url($this->baseUrl,PHP_URL_PATH),'/');                
+                $ret = $path.'/'.$url;
             } else {
                 $ret = $url;
-            }
-            dump($ret);
-            dump('++++++');
+            }            
         }
         return $ret;
     }

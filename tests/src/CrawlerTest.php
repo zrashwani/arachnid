@@ -1,6 +1,8 @@
 <?php
 
 namespace Arachnid;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 class CrawlerTest extends \PHPUnit_Framework_TestCase
 {	
@@ -14,8 +16,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 		$crawler->traverse();
 		$links = $crawler->getLinks();		
 		$this->assertEquals(get_class($crawler->getScrapClient()), \Goutte\Client::class );
-		
-		$this->assertEquals($links[$url]['status_code'],200);
+
+		$this->assertEquals($links['https://www.google.com/']['status_code'],200, $url.' shall be 200 ok');
 		$this->assertGreaterThan(3,count($links));
 	}
         
@@ -52,7 +54,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 		$links = $crawler->getLinks();
 		
 		$this->assertEquals(get_class($crawler->getScrapClient()), Clients\FilesystemClient::class );
-		$this->assertEquals($links[$filePath]['status_code'],200);
+		$this->assertEquals($links[$filePath]['status_code'],200, $filePath.' shall be 200 ok');
                 
 		$this->assertEquals(8,count($links));
 	}	
@@ -153,17 +155,56 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
               ['/test.html', true],                
             ];
         }
-        
+
+        /**
+         * @dataProvider getPathFromUrlProvider
+         * @param string $baseUrl
+         * @param string $uri
+         * @param string $expected
+         * @param boolean $localFile
+         */        
+        public function testGetPathFromUrl($baseUrl, $uri, $expected, $localFile){
+            $method = new \ReflectionMethod(Crawler::class, 'getPathFromUrl');
+            $method->setAccessible(true);
+            
+            $actual = $method->invoke(new Crawler($baseUrl,2,$localFile), $uri);            
+            $this->assertEquals($expected, $actual);
+        }
+
+        /**
+         * data provider for getPathFromUrl method
+         * @return array
+         */        
+        public function getPathFromUrlProvider(){
+            return [
+              ['http://example.com', '/ar/testing', '/ar/testing', false],  
+              ['http://example.com/ar/', '/ar/testing', '/ar/testing', false],  
+              ['http://example.com/ar/', 'testing', '/ar/testing', false],  
+              ['http://example.com', 'testing', '/testing', false],  
+              ['http://example.com/', 'http://example.com/testing', '/testing', false],                
+              [__DIR__.'/../data/index', '/index', __DIR__.'/../data/index', true],  
+              [__DIR__.'/../data/index', '/index2', __DIR__.'/../data/index2', true],  
+              [__DIR__.'/../data/index', 'sub', __DIR__.'/../data/index/sub', true],    
+            ];
+        }
+ 
+        /**
+         * test filtering links callback
+         */
         public function testfilterCallback(){
-            $client = new Crawler('https://www.orbex.com/ar/',4);
+            $logger = new Logger('name');
+            $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
+            
+            $client = new Crawler('https://www.orbex.com/ar/',2);
+            
+            $client->setLogger($logger);
             $client->filterLinks(function($link){
                 return preg_match('@.*/ar/.*$@i',$link);
             });
             $client->traverse();
             $links = $client->getLinks();
             
-            foreach($links as $link=>$link_info){
-                dump($link_info);
+            foreach(array_keys($links) as $link){
                 $this->assertRegExp('@.*/ar/.*$@i', $link);
             }
         }
