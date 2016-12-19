@@ -112,7 +112,20 @@ class Crawler
      */
     public function getLinks()
     {
-        return $this->links;
+        if($this->filterCallback === null){
+            $links = $this->links;
+        }else{
+            $links = array_filter($this->links, function($link_info){
+                if(isset($link_info['dont_visit'])===true &&
+                        $link_info['dont_visit']===true){
+                    return false;
+                }else{
+                    return true;
+                }
+            });
+        }
+        
+        return $links;
     }
 
     /**
@@ -131,14 +144,14 @@ class Crawler
                 $this->links[$hash]['dont_visit']===true){
             return;
         }
-        if($this->filterCallback){
-            $filterLinks = $this->filterCallback;
-            if(!$filterLinks($url)){                       
-                $this->links[$hash]['dont_visit'] = true;                
+        
+        $filterLinks = $this->filterCallback;
+        if($this->filterCallback !== null && $filterLinks($url) === false){                
+                $this->links[$hash]['dont_visit'] = true;
                 $this->log(LogLevel::INFO,$url.' skipping url not matching filter criteria', ['depth'=>$depth]);
                 return;
-            }
         }
+        
         $this->log(LogLevel::INFO,$url. ' crawling in process', ['depth'=>$depth]);
 
         try {
@@ -216,9 +229,7 @@ class Crawler
                 $cookieName = time()."_".substr(md5(microtime()),0,5).".txt"; 
 
                 $guzzleClient = new \GuzzleHttp\Client(array(
-                    'curl' => array(
-                        CURLOPT_SSL_VERIFYHOST => false,
-                        CURLOPT_SSL_VERIFYPEER => false,
+                    'curl' => array(        
                         CURLOPT_COOKIEJAR      => $cookieName,
                         CURLOPT_COOKIEFILE     => $cookieName,
                     ),
@@ -259,7 +270,7 @@ class Crawler
             }
             
             if($filterCallback && $filterCallback($url)===false &&
-                    isset($this->links[$hash]) === false){       
+                    isset($this->links[$hash]) === false){                   
                     $this->links[$hash]['dont_visit'] = true;                    
                     $this->log(LogLevel::INFO,'skipping link not match filter criteria '.$url);
                     return;
@@ -309,7 +320,7 @@ class Crawler
                     $this->links[$hash]['dont_visit']===true){
                 return;
             }
-            if($filterLinks && $filterLinks($hash) === false){
+            if($filterLinks && $filterLinks($hash) === false){                
                 $this->links[$hash]['dont_visit'] = true;
                 $this->log(LogLevel::INFO, 'skipping '.$hash. ' not matching filter criteira');
                 return;
@@ -375,10 +386,7 @@ class Crawler
         $crawler->filterXPath('//head//title')->each(function (DomCrawler $node) use ($url) {
             $this->links[$url]['title'] = trim($node->text());
         });
-        //check if meta title still needed
-        $crawler->filterXPath('//meta[@name="title"]')->each(function (DomCrawler $node) use ($url) {
-            $this->links[$url]['meta_title'] = trim($node->attr('content'));
-        });
+        
         $crawler->filterXPath('//meta[@name="description"]')->each(function (DomCrawler $node) use ($url) {
             $this->links[$url]['meta_description'] = trim($node->attr('content'));
         });
@@ -498,7 +506,9 @@ class Crawler
     protected function getAbsoluteUrl($nodeUrl){
         $urlParts = parse_url($this->baseUrl);        
         
-        if(!$this->checkIfCrawlable($nodeUrl)){
+        if(strpos($nodeUrl,'#') === 0){
+            $ret = rtrim($this->baseUrl,'/').$nodeUrl;   
+        }elseif(!$this->checkIfCrawlable($nodeUrl)){
             $ret = $nodeUrl;   
         }elseif(strpos($nodeUrl,'//') === 0){
                 $ret = (isset($urlParts['scheme'])=== true?

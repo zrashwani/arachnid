@@ -49,7 +49,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testScrapperClient1Level(){
 		$filePath = __DIR__.'/../data/index';
-		$crawler = new Crawler($filePath,1, true); //non existing client		
+		$crawler = new Crawler($filePath,1, true);
 		$crawler->traverse();
 		$links = $crawler->getLinks();
 		
@@ -64,7 +64,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testScrapperClient2Level(){
 		$filePath = __DIR__.'/../data/index';
-		$crawler = new Crawler($filePath,2,true); //non existing client		
+		$crawler = new Crawler($filePath,2,true); 
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
@@ -73,13 +73,26 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 		$this->assertCount(8,$links); //TODO: fix and uncomment
 	}	
 
+        /**
+         * test broken links
+         */
+	public function testBrokenLink(){
+		$filePath = __DIR__.'/../data/sub_dir/level1-3';
+		$crawler = new Crawler($filePath,2,true); 
+		$crawler->traverse();
+
+		$links = $crawler->getLinks();		
+                
+		$this->assertEquals($links[$filePath]['status_code'],200);		
+	}	
+
 	/**
 	 * test get absolute url
 	 * @dataProvider urlAbsoluteProvider
 	 */
 	public function testGetAbsoluteUrl($baseUrl,$nodeUrl, $expectedUrl){
                 $method = new \ReflectionMethod(
-                    '\Arachnid\Crawler', 'getAbsoluteUrl'
+                    \Arachnid\Crawler::class, 'getAbsoluteUrl'
                 );            
                 $method->setAccessible(true);
                 
@@ -124,6 +137,11 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 				'//example2.com',
 				'https://example2.com'
 			],												
+			[
+				'https://example.com/',
+				'#title',
+				'https://example.com#title'
+			],								
 		];
 	}
         
@@ -197,17 +215,18 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
             $logger = new Logger('name');
             $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
             
-            $client = new Crawler('https://www.orbex.com/ar/',2);
+            $client = new Crawler('https://github.com/blog/',2);
             
             $client->setLogger($logger);
             $client->filterLinks(function($link){
-                return preg_match('@.*/ar/.*$@i',$link);
+                return (bool)preg_match('/.*\/blog.*$/u',$link); //crawling only blog links
             });
             $client->traverse();
             $links = $client->getLinks();
             
-            foreach(array_keys($links) as $link){
-                $this->assertRegExp('@.*/ar/.*$@i', $link);
+            foreach($links as $uri => $link_info){                
+                $this->assertRegExp('/.*\/blog.*$/u', isset($link_info['absolute_url'])?
+                        $link_info['absolute_url']:$uri);
             }
         }
         
