@@ -181,10 +181,12 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
               ['http://example.com/ar/', '/ar/testing', '/ar/testing', false],  
               ['http://example.com/ar/', 'testing', '/ar/testing', false],  
               ['http://example.com', 'testing', '/testing', false],  
-              ['http://example.com/', 'http://example.com/testing', '/testing', false],                
+              ['http://example.com/', 'http://example.com/testing', '/testing', false],
+              ['http://example.com/', 'mailto: zrashwani@gmail.com', 'mailto: zrashwani@gmail.com', false],  
+              ['http://example.com', 'https://www.pinterest.com/OrbexFX/', 'https://www.pinterest.com/OrbexFX/', false],      
               [__DIR__.'/../data/index', '/index', __DIR__.'/../data/index', true],  
               [__DIR__.'/../data/index', '/index2', __DIR__.'/../data/index2', true],  
-              [__DIR__.'/../data/index', 'sub', __DIR__.'/../data/index/sub', true],    
+              [__DIR__.'/../data/index', 'sub', __DIR__.'/../data/index/sub', true],                  
             ];
         }
  
@@ -208,4 +210,20 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
                 $this->assertRegExp('@.*/ar/.*$@i', $link);
             }
         }
+        
+        /**
+         * test crawling one level pages
+         */
+	public function testMetaInfo(){
+		$filePath = __DIR__.'/../data/index';
+		$crawler = new Crawler($filePath,1, true); //non existing client		
+		$crawler->traverse();
+		$links = $crawler->getLinks();
+				
+		$this->assertEquals($links[$filePath]['status_code'],200, $filePath.' shall be 200 ok');                		
+		$this->assertEquals($links[$filePath]['title'],'Main Page');                		
+		$this->assertEquals($links[$filePath]['meta_description'],'meta description for main page');                		
+		$this->assertEquals($links[$filePath]['meta_keywords'],'keywords1, keywords2');                				
+	}	
+        
 }

@@ -71,7 +71,7 @@ class Crawler
      * @var \Psr\Log\LoggerInterface
      */
     protected $logger;
-
+    
     /**
      * Constructor
      * @param string $baseUrl
@@ -82,7 +82,7 @@ class Crawler
         $this->baseUrl = $baseUrl;
         $this->maxDepth = $maxDepth;
         $this->links = array();
-        $this->localFile  = $localFile;
+        $this->localFile  = $localFile;    
     }
 
     /**
@@ -125,35 +125,41 @@ class Crawler
         if($depth<1){
             return;
         }
+        $hash = $this->getPathFromUrl($url);     
+        
+        if(isset($this->links[$hash]['dont_visit']) &&
+                $this->links[$hash]['dont_visit']===true){
+            return;
+        }
         if($this->filterCallback){
             $filterLinks = $this->filterCallback;
-            if(!$filterLinks($url)){
-                //skipping url '.$url.' not matching filter criteria
-                $this->log(LogLevel::INFO,'skipping url '.$url.' not matching filter criteria', ['depth'=>$depth]);
+            if(!$filterLinks($url)){                       
+                $this->links[$hash]['dont_visit'] = true;                
+                $this->log(LogLevel::INFO,$url.' skipping url not matching filter criteria', ['depth'=>$depth]);
                 return;
             }
         }
-        $this->log(LogLevel::INFO,'crawling '.$url, ['depth'=>$depth]);
+        $this->log(LogLevel::INFO,$url. ' crawling in process', ['depth'=>$depth]);
 
         try {
             $client = $this->getScrapClient();
 
             $crawler = $client->request('GET', $url);                    
             $statusCode = $client->getResponse()->getStatus();
-
+            
             if($url == $this->baseUrl){
                 $hash = $url;
             }else{
                 $hash = $this->getPathFromUrl($url);            
             }
             $this->links[$hash]['status_code'] = $statusCode;
-            $this->log(LogLevel::INFO,'crawled '.$url.' code='.$statusCode);
+            $this->log(LogLevel::INFO,$url.' status code='.$statusCode);
 
             if ($statusCode === 200) {
                 $content_type = $client->getResponse()->getHeader('Content-Type');
 
                 if (strpos($content_type, 'text/html') !== false) { //traverse children in case the response in HTML document only
-                    $this->extractTitleInfo($crawler, $hash);
+                    $this->extractMetaInfo($crawler, $hash);
 
                     $childLinks = array();
                     if (isset($this->links[$hash]['external_link']) === true 
@@ -168,30 +174,30 @@ class Crawler
             }
         } catch (\Guzzle\Http\Exception\CurlException $e) {
             if($filterLinks && $filterLinks($url) === false){
-                $this->log(LogLevel::INFO, 'skipping storing broken link'.$url.' not matching filter criteria');
+                $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
             }else{
                 $this->links[$url]['status_code'] = '404';
                 $this->links[$url]['error_code'] = $e->getCode();
                 $this->links[$url]['error_message'] = $e->getMessage();
-                $this->log(LogLevel::ERROR,'broken link detected '.$url.' code='.$e->getCode()); 
+                $this->log(LogLevel::ERROR,$url.' broken link detected code='.$e->getCode()); 
             }
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             if($filterLinks && $filterLinks($url) === false){
-                $this->log(LogLevel::INFO, 'skipping storing broken link'.$url.' not matching filter criteria');
+                $this->log(LogLevel::INFO, $url.' skipping storing broken link not matching filter criteria');
             }else{            
                 $this->links[$url]['status_code'] = $e->getResponse()->getStatusCode();
                 $this->links[$url]['error_code'] = $e->getCode();
                 $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
-                $this->log(LogLevel::ERROR,'broken link detected '.$url.' code='.$e->getResponse()->getStatusCode()); 
+                $this->log(LogLevel::ERROR,$url.' broken link detected code='.$e->getResponse()->getStatusCode()); 
             }
         } catch (\Exception $e) {
             if($filterLinks && $filterLinks($url) === false){
-                $this->log(LogLevel::INFO, 'skipping storing broken link'.$url.' not matching filter criteria');
+                $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
             }else{            
                 $this->links[$url]['status_code'] = '404';
                 $this->links[$url]['error_code'] = $e->getCode();
                 $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
-                $this->log(LogLevel::ERROR,'broken link detected '.$url.' code='.$e->getCode()); 
+                $this->log(LogLevel::ERROR,$url.' broken link detected code='.$e->getCode());                 
             }
         }
     }
@@ -247,7 +253,14 @@ class Crawler
             $filterCallback = $this->filterCallback;
             $hash = $this->getPathFromUrl($url);
             
-            if($filterCallback && $filterCallback($url)===false){                    
+            if(isset($this->links[$hash]['dont_visit']) &&
+                    $this->links[$hash]['dont_visit']===true){
+                return;
+            }
+            
+            if($filterCallback && $filterCallback($url)===false &&
+                    isset($this->links[$hash]) === false){       
+                    $this->links[$hash]['dont_visit'] = true;                    
                     $this->log(LogLevel::INFO,'skipping link not match filter criteria '.$url);
                     return;
             }          
@@ -266,7 +279,8 @@ class Crawler
                 $this->links[$hash]['visited'] = false;
             }
 
-            if (empty($url) === false && $this->links[$hash]['visited'] === false && isset($this->links[$hash]['dont_visit']) === false) {
+            if (empty($url) === false && $this->links[$hash]['visited'] === false && 
+                    isset($this->links[$hash]['dont_visit']) === false) {
                 $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);      
                 $this->traverseSingle($normalizedUrl, $depth-1);
             }
@@ -290,8 +304,13 @@ class Crawler
             
             $normalizedLink = $this->normalizeLink($nodeUrl);            
             $hash = $this->getAbsoluteUrl($normalizedLink);
-            $filterLinks = $this->filterCallback;            
+            $filterLinks = $this->filterCallback;
+            if(isset($this->links[$hash]['dont_visit']) &&
+                    $this->links[$hash]['dont_visit']===true){
+                return;
+            }
             if($filterLinks && $filterLinks($hash) === false){
+                $this->links[$hash]['dont_visit'] = true;
                 $this->log(LogLevel::INFO, 'skipping '.$hash. ' not matching filter criteira');
                 return;
             }
@@ -321,7 +340,7 @@ class Crawler
                 } else {
                     $childLinks[$hash]['visited'] = false;
                     $childLinks[$hash]['dont_visit'] = true;
-                    $childLinks[$hash]['external_link'] = false;
+                    $childLinks[$hash]['external_link'] = false;                    
                 }
             }
         });
@@ -343,16 +362,29 @@ class Crawler
     }
 
     /**
-     * Extract title information from url
+     * Extract meta title/description/keywords information from url
      * @param \Symfony\Component\DomCrawler\Crawler $crawler
      * @param string                                $url
      */
-    protected function extractTitleInfo(DomCrawler $crawler, $url)
+    protected function extractMetaInfo(DomCrawler $crawler, $url)
     {
+        $this->links[$url]['title'] = '';
+        $this->links[$url]['meta_keywords'] = '';
+        $this->links[$url]['meta_description'] = '';
+        
         $crawler->filterXPath('//head//title')->each(function (DomCrawler $node) use ($url) {
             $this->links[$url]['title'] = trim($node->text());
         });
-
+        //check if meta title still needed
+        $crawler->filterXPath('//meta[@name="title"]')->each(function (DomCrawler $node) use ($url) {
+            $this->links[$url]['meta_title'] = trim($node->attr('content'));
+        });
+        $crawler->filterXPath('//meta[@name="description"]')->each(function (DomCrawler $node) use ($url) {
+            $this->links[$url]['meta_description'] = trim($node->attr('content'));
+        });
+        $crawler->filterXPath('//meta[@name="keywords"]')->each(function (DomCrawler $node) use ($url) {
+            $this->links[$url]['meta_keywords'] = trim($node->attr('content'));
+        });
 
         $h1_count = $crawler->filter('h1')->count();
         $this->links[$url]['h1_count'] = $h1_count;
@@ -362,7 +394,8 @@ class Crawler
             $crawler->filter('h1')->each(function (DomCrawler $node, $i) use ($url) {
                 $this->links[$url]['h1_contents'][$i] = trim($node->text());
             });
-        }
+        }        
+        $this->log(LogLevel::INFO,$url.' extracted title: '.$this->links[$url]['title']);
     }
 
     /**
@@ -430,7 +463,9 @@ class Crawler
      */
     protected function getPathFromUrl($url)
     {
-        if($this->localFile === true){
+	if(!$this->checkIfCrawlable($url)){
+	    $ret = $url;
+	}elseif($this->localFile === true){
             $trimmedPath = rtrim($this->baseUrl, '/');
             if(strpos($url,'/')===0){           
                 $ret = substr($trimmedPath,0,strrpos($trimmedPath,'/')).$url;
@@ -443,6 +478,8 @@ class Crawler
             
             if (strpos($url, $schemaAndHost) === 0 && $url !== $schemaAndHost) {
                 $ret = str_replace($schemaAndHost, '', $url);
+            }elseif(strpos($url,'http://')===0 || strpos($url,'https://')===0){ //different domain name
+                $ret = $url; 
             } elseif(strpos($url,'/')!==0) {
                 $path = rtrim(parse_url($this->baseUrl,PHP_URL_PATH),'/');                
                 $ret = $path.'/'.$url;
@@ -461,14 +498,18 @@ class Crawler
     protected function getAbsoluteUrl($nodeUrl){
         $urlParts = parse_url($this->baseUrl);        
         
-        if(strpos($nodeUrl,'//') === 0){
+        if(!$this->checkIfCrawlable($nodeUrl)){
+            $ret = $nodeUrl;   
+        }elseif(strpos($nodeUrl,'//') === 0){
                 $ret = (isset($urlParts['scheme'])=== true?
                         $urlParts['scheme']:'http').':'.$nodeUrl;            
         }elseif(isset($urlParts['scheme'])){            
             if(strpos($nodeUrl,'http://')===0 || strpos($nodeUrl,'https://')===0){
                 $ret = $nodeUrl;
-            }else{
+            }elseif(strpos($nodeUrl,'/')===0){
                 $ret = $urlParts['scheme'] . '://' . $urlParts['host'] . $nodeUrl;
+            }else{
+                $ret = $this->baseUrl.$nodeUrl;
             }
         }else{
             $ret = $nodeUrl;
@@ -476,5 +517,5 @@ class Crawler
         
         return $ret;
     }
-    
+
 }
