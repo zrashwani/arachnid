@@ -475,7 +475,11 @@ class Crawler
 	    $ret = $url;
 	}elseif($this->localFile === true){
             $trimmedPath = rtrim($this->baseUrl, '/');
-            if(strpos($url,'/')===0){           
+            if(strpos($url,'http://')===0 || strpos($url,'https://')===0){ //different domain name
+                $ret = $url; 
+            }elseif(strpos($url,$this->baseUrl) === 0){
+                $ret = $url;
+            }elseif(strpos($url,'/')===0){           
                 $ret = substr($trimmedPath,0,strrpos($trimmedPath,'/')).$url;
             }else{
                 $ret = $trimmedPath.'/'.$url;
@@ -506,7 +510,9 @@ class Crawler
     protected function getAbsoluteUrl($nodeUrl){
         $urlParts = parse_url($this->baseUrl);        
         
-        if(strpos($nodeUrl,'#') === 0){
+        if(strpos($nodeUrl,'http://')===0 || strpos($nodeUrl,'https://')===0){
+                $ret = $nodeUrl;
+        }elseif(strpos($nodeUrl,'#') === 0){
             $ret = rtrim($this->baseUrl,'/').$nodeUrl;   
         }elseif(!$this->checkIfCrawlable($nodeUrl)){
             $ret = $nodeUrl;   
@@ -514,9 +520,8 @@ class Crawler
                 $ret = (isset($urlParts['scheme'])=== true?
                         $urlParts['scheme']:'http').':'.$nodeUrl;            
         }elseif(isset($urlParts['scheme'])){            
-            if(strpos($nodeUrl,'http://')===0 || strpos($nodeUrl,'https://')===0){
-                $ret = $nodeUrl;
-            }elseif(strpos($nodeUrl,'/')===0){
+            
+            if(strpos($nodeUrl,'/')===0){
                 $ret = $urlParts['scheme'] . '://' . $urlParts['host'] . $nodeUrl;
             }else{
                 $ret = $this->baseUrl.$nodeUrl;

@@ -48,7 +48,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          * test crawling one level pages
          */
 	public function testScrapperClient1Level(){
-		$filePath = __DIR__.'/../data/index';
+		$filePath = __DIR__.'/../data/index.html';
 		$crawler = new Crawler($filePath,1, true);
 		$crawler->traverse();
 		$links = $crawler->getLinks();
@@ -63,27 +63,45 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          * test crawling two levels pages
          */
 	public function testScrapperClient2Level(){
-		$filePath = __DIR__.'/../data/index';
+		$filePath = __DIR__.'/../data/index.html';
 		$crawler = new Crawler($filePath,2,true); 
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
 
 		$this->assertEquals($links[$filePath]['status_code'],200);
-		$this->assertCount(8,$links); //TODO: fix and uncomment
+		$this->assertCount(8,$links); 
+	}	
+
+        /**
+         * test crawling three levels pages
+         */
+	public function testScrapperClient3Level(){
+		$filePath = __DIR__.'/../data/index.html';
+		$crawler = new Crawler($filePath,4,true); 
+		$crawler->traverse();
+
+		$links = $crawler->getLinks();		
+dump($links);
+		$this->assertEquals($links[$filePath]['status_code'],200);
+		$this->greaterThan(8,count($links)); 
+                $this->assertArrayHasKey('http://facebook.com', $links);
+                $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level2-3.html', $links);
+                $this->assertEquals($links[__DIR__.'/../data/sub_dir/level2-3.html']['status_code'], 200);
+                die();
 	}	
 
         /**
          * test broken links
          */
 	public function testBrokenLink(){
-		$filePath = __DIR__.'/../data/sub_dir/level1-3';
+		$filePath = __DIR__.'/../data/sub_dir/level1-3.html2';
 		$crawler = new Crawler($filePath,2,true); 
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
                 
-		$this->assertEquals($links[$filePath]['status_code'],200);		
+		$this->assertEquals($links[$filePath]['status_code'],404);		
 	}	
 
 	/**
@@ -142,6 +160,16 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 				'#title',
 				'https://example.com#title'
 			],								
+			[
+				'https://example.com/',
+				'test',
+				'https://example.com/test'
+			],	                    
+			[
+				__DIR__.'/../data/index',
+				'http://facebook.com',
+				'http://facebook.com'
+			],	                    
 		];
 	}
         
@@ -234,7 +262,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          * test crawling one level pages
          */
 	public function testMetaInfo(){
-		$filePath = __DIR__.'/../data/index';
+		$filePath = __DIR__.'/../data/index.html';
 		$crawler = new Crawler($filePath,1, true); //non existing client		
 		$crawler->traverse();
 		$links = $crawler->getLinks();

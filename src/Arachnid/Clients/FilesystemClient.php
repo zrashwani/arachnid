@@ -20,7 +20,11 @@ class FilesystemClient extends Client
      */
     protected function doRequest($request)
     {
-        $file = $this->getFilePath($request->getUri());
+        if(file_exists($request->getUri()) === true){
+            $file = $request->getUri();
+        }else{
+            $file = $this->getFilePath($request->getUri());
+        }
         if (!file_exists($file)) {
             return new Response('Page not found', 404, []);
         }
@@ -36,6 +40,6 @@ class FilesystemClient extends Client
     {
         // convert an uri to a file path to your saved response
         // could be something like this:
-        return preg_replace('@http://localhost@', '', $uri).'.html';
+        return preg_replace('@http://localhost@', '', $uri);
     }
 }
