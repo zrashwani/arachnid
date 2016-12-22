@@ -307,14 +307,14 @@ class Crawler
     public function extractLinksInfo(DomCrawler $crawler, $url)
     {
         $childLinks = array();
-        $crawler->filter('a')->each(function (DomCrawler $node, $i) use (&$childLinks) {
+        $crawler->filter('a')->each(function (DomCrawler $node, $i) use (&$childLinks, $url) {
             $nodeText = trim($node->text());
             $nodeUrl = $node->attr('href');
             $nodeUrlIsCrawlable = $this->checkIfCrawlable($nodeUrl);
 
             
             $normalizedLink = $this->normalizeLink($nodeUrl);            
-            $hash = $this->getAbsoluteUrl($normalizedLink);
+            $hash = $this->getAbsoluteUrl($normalizedLink, $url);
             $filterLinks = $this->filterCallback;
             if(isset($this->links[$hash]['dont_visit']) &&
                     $this->links[$hash]['dont_visit']===true){
@@ -473,14 +473,15 @@ class Crawler
     {
 	if(!$this->checkIfCrawlable($url)){
 	    $ret = $url;
-	}elseif($this->localFile === true){
-            $trimmedPath = rtrim($this->baseUrl, '/');
+	}elseif($this->localFile === true){            
+            $trimmedPath = dirname($this->baseUrl);
+            
             if(strpos($url,'http://')===0 || strpos($url,'https://')===0){ //different domain name
                 $ret = $url; 
-            }elseif(strpos($url,$this->baseUrl) === 0){
+            }elseif(strpos($url,$trimmedPath) === 0){ //url full url begin with baseUrl name
                 $ret = $url;
             }elseif(strpos($url,'/')===0){           
-                $ret = substr($trimmedPath,0,strrpos($trimmedPath,'/')).$url;
+                $ret = $trimmedPath.$url;
             }else{
                 $ret = $trimmedPath.'/'.$url;
             }            
@@ -504,10 +505,11 @@ class Crawler
 
     /** 
      * converting nodeUrl to absolute url form
-     * @param string $nodeUrl
+     * @param string      $nodeUrl
+     * @param string|NULL $parentUrl
      * @return string
      */
-    protected function getAbsoluteUrl($nodeUrl){
+    protected function getAbsoluteUrl($nodeUrl, $parentUrl = null){
         $urlParts = parse_url($this->baseUrl);        
         
         if(strpos($nodeUrl,'http://')===0 || strpos($nodeUrl,'https://')===0){
@@ -526,6 +528,8 @@ class Crawler
             }else{
                 $ret = $this->baseUrl.$nodeUrl;
             }
+        }elseif($this->localFile===true){
+            $ret = dirname($parentUrl).'/'.$nodeUrl;
         }else{
             $ret = $nodeUrl;
         }

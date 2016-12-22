@@ -35,7 +35,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          * test crawling non-existent page
          */
 	public function testFileNotExist(){
-		$crawler = new Crawler('test',1, true); //non existing client		
+		$crawler = new Crawler('test',1, true); //non existing url/path
 
 		$crawler->traverse();		
 		$ret = $crawler->getLinks();
@@ -78,17 +78,17 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testScrapperClient3Level(){
 		$filePath = __DIR__.'/../data/index.html';
-		$crawler = new Crawler($filePath,4,true); 
+		$crawler = new Crawler($filePath,5,true); 
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
-dump($links);
+
 		$this->assertEquals($links[$filePath]['status_code'],200);
 		$this->greaterThan(8,count($links)); 
                 $this->assertArrayHasKey('http://facebook.com', $links);
                 $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level2-3.html', $links);
                 $this->assertEquals($links[__DIR__.'/../data/sub_dir/level2-3.html']['status_code'], 200);
-                die();
+
 	}	
 
         /**
@@ -108,13 +108,13 @@ dump($links);
 	 * test get absolute url
 	 * @dataProvider urlAbsoluteProvider
 	 */
-	public function testGetAbsoluteUrl($baseUrl,$nodeUrl, $expectedUrl){
+	public function testGetAbsoluteUrl($baseUrl,$nodeUrl, $expectedUrl, $localFile = false){
                 $method = new \ReflectionMethod(
                     \Arachnid\Crawler::class, 'getAbsoluteUrl'
                 );            
                 $method->setAccessible(true);
                 
-		$crawler = new Crawler($baseUrl,1); 
+		$crawler = new Crawler($baseUrl,1,$localFile); 
                 $retUrl = $method->invoke($crawler, $nodeUrl);
 		$this->assertEquals($retUrl,$expectedUrl);
 	}
@@ -168,7 +168,8 @@ dump($links);
 			[
 				__DIR__.'/../data/index',
 				'http://facebook.com',
-				'http://facebook.com'
+				'http://facebook.com',
+                                 true //local file
 			],	                    
 		];
 	}
@@ -214,7 +215,7 @@ dump($links);
             $method->setAccessible(true);
             
             $actual = $method->invoke(new Crawler($baseUrl,2,$localFile), $uri);            
-            $this->assertEquals($expected, $actual);
+            $this->assertEquals($expected, $actual, 'error on base url '.$baseUrl);
         }
 
         /**
@@ -230,9 +231,9 @@ dump($links);
               ['http://example.com/', 'http://example.com/testing', '/testing', false],
               ['http://example.com/', 'mailto: zrashwani@gmail.com', 'mailto: zrashwani@gmail.com', false],  
               ['http://example.com', 'https://www.pinterest.com/OrbexFX/', 'https://www.pinterest.com/OrbexFX/', false],      
-              [__DIR__.'/../data/index', '/index', __DIR__.'/../data/index', true],  
-              [__DIR__.'/../data/index', '/index2', __DIR__.'/../data/index2', true],  
-              [__DIR__.'/../data/index', 'sub', __DIR__.'/../data/index/sub', true],                  
+              [__DIR__.'/../data/index.html', '/index.html', __DIR__.'/../data/index.html', true],  
+              [__DIR__.'/../data/index.html', '/index2.html', __DIR__.'/../data/index2.html', true],  
+              [__DIR__.'/../data/index.html', 'sub', __DIR__.'/../data/sub', true],                  
             ];
         }
  
