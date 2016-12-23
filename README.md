@@ -12,6 +12,7 @@ for Composer and Packagist and updated the syntax to conform with
 the PSR-2 coding standard.
 
 [![SensioLabsInsight](https://insight.sensiolabs.com/projects/8ff1e4b2-d8c8-4465-b9ea-f5db69c3c2d0/mini.png)](https://insight.sensiolabs.com/projects/8ff1e4b2-d8c8-4465-b9ea-f5db69c3c2d0)
+[![Build Status](https://travis-ci.org/zrashwani/arachnid.svg?branch=master)](https://travis-ci.org/zrashwani/arachnid)
 
 ## How to Install
 
@@ -57,7 +58,8 @@ Here's a quick demo to crawl a website:
 
     //filter links according to specific callback as closure
     $links = $client->filterLinks(function($link){
-                        return (bool)preg_match('/.*\/blog.*$/u',$link); //crawling only blog links
+                        //crawling only blog links
+                        return (bool)preg_match('/.*\/blog.*$/u',$link); 
                     })
                     ->traverse()
                     ->getLinks();
@@ -76,7 +78,7 @@ All pull requests must adhere to the [PSR-2 standard][psr2].
 
 ## System Requirements
 
-* PHP 5.4.0+
+* PHP 5.6.0+
 
 ## Authors
 
