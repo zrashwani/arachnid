@@ -64,7 +64,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testScrapperClient2Level(){
 		$filePath = __DIR__.'/../data/index.html';
-		$crawler = new Crawler($filePath,2,true); 
+		$crawler = new Crawler($filePath,1,true); 
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
@@ -79,6 +79,10 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 	public function testScrapperClient3Level(){
 		$filePath = __DIR__.'/../data/index.html';
 		$crawler = new Crawler($filePath,5,true); 
+                
+                $logger = new Logger('crawling logger');
+                $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));                
+                $crawler->setLogger($logger);
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
@@ -166,7 +170,12 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 				'https://example.com/test'
 			],	                    
 			[
-				__DIR__.'/../data/index',
+				'https://example.com/',
+				'javascript:void(0);',
+				'javascript:void(0);'
+			],	                    
+			[
+				__DIR__.'/../data/index.html',
 				'http://facebook.com',
 				'http://facebook.com',
                                  true //local file
@@ -246,15 +255,35 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
             
             $client = new Crawler('https://github.com/blog/',2);
             
-            $client->setLogger($logger);
-            $client->filterLinks(function($link){
-                return (bool)preg_match('/.*\/blog.*$/u',$link); //crawling only blog links
-            });
-            $client->traverse();
+            $client->setLogger($logger)
+                   ->filterLinks(function($link){
+                         return (bool)preg_match('/.*\/blog.*$/u',$link); //crawling only blog links
+                   })->traverse();
             $links = $client->getLinks();
             
-            foreach($links as $uri => $link_info){                
+            foreach($links as $uri => $link_info){
                 $this->assertRegExp('/.*\/blog.*$/u', isset($link_info['absolute_url'])?
+                        $link_info['absolute_url']:$uri);
+            }
+        }
+        
+        /**
+         * test filtering links callback 2
+         */
+        public function testfilterCallback2(){
+            $logger = new Logger('crawler logger');
+            $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
+            
+            $client = new Crawler(__DIR__.'/../data/filter1.html',4);
+            
+            $client->setLogger($logger)
+                   ->filterLinks(function($link){
+                         return preg_match('/.*(dont\-visit).*/u',$link)===0; // prevent any link containing dont-visit in url
+                   })->traverse();
+            $links = $client->getLinks();
+            
+            foreach($links as $uri => $link_info){
+                $this->assertNotRegExp('/.*dont\-visit.*/U', isset($link_info['absolute_url'])?
                         $link_info['absolute_url']:$uri);
             }
         }

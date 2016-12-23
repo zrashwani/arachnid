@@ -144,7 +144,7 @@ class Crawler
                 $this->links[$hash]['dont_visit']===true){
             return;
         }
-        
+        $this->links[$hash]['depth'] = $this->maxDepth - $depth;
         $filterLinks = $this->filterCallback;
         if($this->filterCallback !== null && $filterLinks($url) === false){                
                 $this->links[$hash]['dont_visit'] = true;
@@ -163,7 +163,7 @@ class Crawler
             if($url == $this->baseUrl){
                 $hash = $url;
             }else{
-                $hash = $this->getPathFromUrl($url);            
+                $hash = $this->getPathFromUrl($url, $this->baseUrl);            
             }
             $this->links[$hash]['status_code'] = $statusCode;
             $this->log(LogLevel::INFO,$url.' status code='.$statusCode);
@@ -181,7 +181,7 @@ class Crawler
                     }
 
                     $this->links[$hash]['visited'] = true;
-                    $this->traverseChildren($childLinks, $depth - 1);
+                    $this->traverseChildren($hash, $childLinks, $depth);
                     
                 }
             }
@@ -249,20 +249,27 @@ class Crawler
         $this->scrapClient = $client;
     }
     
+    /**
+     * set callback to filter links by specific criteria
+     * @param \Closure $filterCallback
+     * @return \Arachnid\Crawler
+     */
     public function filterLinks(\Closure $filterCallback){
         $this->filterCallback = $filterCallback;
+        return $this;
     }
 
     /**
      * Crawl child links
+     * @param string $sourceUrl
      * @param array $childLinks
      * @param int   $depth
      */
-    public function traverseChildren($childLinks, $depth)
+    public function traverseChildren($sourceUrl, $childLinks, $depth)
     {
         foreach ($childLinks as $url => $info) {
             $filterCallback = $this->filterCallback;
-            $hash = $this->getPathFromUrl($url);
+            $hash = $this->getPathFromUrl($url, $sourceUrl);
             
             if(isset($this->links[$hash]['dont_visit']) &&
                     $this->links[$hash]['dont_visit']===true){
@@ -278,9 +285,14 @@ class Crawler
             if (isset($this->links[$hash]) === false) {
                 $this->links[$hash] = $info;
             } else {
-                $this->links[$hash]['original_urls'] = isset($this->links[$hash]['original_urls']) ? array_merge($this->links[$hash]['original_urls'], $info['original_urls']) : $info['original_urls'];
-                $this->links[$hash]['links_text'] = isset($this->links[$hash]['links_text']) ? array_merge($this->links[$hash]['links_text'], $info['links_text']) : $info['links_text'];
-                if (isset($this->links[$hash]['visited']) === true && $this->links[$hash]['visited'] === true) {
+                $this->links[$hash]['original_urls'] = isset($this->links[$hash]['original_urls']) 
+                        ? array_merge($this->links[$hash]['original_urls'], $info['original_urls']) 
+                        : $info['original_urls'];
+                $this->links[$hash]['links_text'] = isset($this->links[$hash]['links_text']) 
+                        ? array_merge($this->links[$hash]['links_text'], $info['links_text']) 
+                        : $info['links_text'];
+                if (isset($this->links[$hash]['visited']) === true && 
+                        $this->links[$hash]['visited'] === true) {
                     $oldFrequency = isset($info['frequency']) ? $info['frequency'] : 0;
                     $this->links[$hash]['frequency'] = isset($this->links[$hash]['frequency']) ? $this->links[$hash]['frequency'] + $oldFrequency : 1;
                 }
@@ -314,7 +326,7 @@ class Crawler
 
             
             $normalizedLink = $this->normalizeLink($nodeUrl);            
-            $hash = $this->getAbsoluteUrl($normalizedLink, $url);
+            $hash = $this->getPathFromUrl($normalizedLink, $url);
             $filterLinks = $this->filterCallback;
             if(isset($this->links[$hash]['dont_visit']) &&
                     $this->links[$hash]['dont_visit']===true){
@@ -332,21 +344,15 @@ class Crawler
 
                 if ($nodeUrlIsCrawlable === true) {
                     // Ensure URL is formatted as absolute                    
-                    if (preg_match("@^http(s)\:@", $nodeUrl) !== 1) {
-                        if (strpos($nodeUrl, '/') === 0) {                         
-                            $childLinks[$hash]['absolute_url'] = $this->getAbsoluteUrl($nodeUrl);                            
-                        } else {
-                            $childLinks[$hash]['absolute_url'] = substr($this->baseUrl, 0, strrpos( $this->baseUrl, '/')) . '/' . $nodeUrl;
-                        }
-                    } else {
-                        $childLinks[$hash]['absolute_url'] = $nodeUrl;
-                    }
+                    $childLinks[$hash]['absolute_url'] = $this->getAbsoluteUrl($nodeUrl, $url);
 
                     // Is this an external URL?
                     $childLinks[$hash]['external_link'] = $this->checkIfExternal($childLinks[$hash]['absolute_url']);
 
-                    // Additional metadata
-                    $childLinks[$hash]['visited'] = false;
+                    //frequency or visited
+                    if(isset($childLinks[$hash]['visited']) === false){
+                       $childLinks[$hash]['visited'] = false;
+                    }
                     $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
                 } else {
                     $childLinks[$hash]['visited'] = false;
@@ -367,9 +373,11 @@ class Crawler
     /**
      * set logger to the crawler
      * @param $logger \Psr\Log\LoggerInterface
+     * @return \Arachnid\Crawler
      */
     public function setLogger($logger){
         $this->logger = $logger;
+        return $this;
     }
 
     /**
@@ -442,12 +450,23 @@ class Crawler
      */
     protected function checkIfExternal($url)
     {
-        $base_url_trimmed = str_replace(array('http://', 'https://'), '', $this->baseUrl);
-        $base_url_trimmed = explode('/', $base_url_trimmed)[0];
+        if($this->localFile===true){
+            $ret = strpos($url, 'http://')===0 || strpos($url, 'https://')===0;
+        }else{
+            $baseUrlTrimmed = str_replace(array('http://', 'https://'), '', $this->baseUrl);
+            $baseUrlTrimmed = explode('/', $baseUrlTrimmed)[0];
 
-        return preg_match("@http(s)?\://$base_url_trimmed@", $url) !== 1;
+            $ret = preg_match("@http(s)?\://$baseUrlTrimmed@", $url) !== 1;
+        }
+        return $ret;
     }
 
+    /**
+     * logging activity of the crawler in case logger is associated
+     * @param string $level
+     * @param string $message
+     * @param array $context
+     */
     protected function log($level, $message, array $context = array()){
         if(isset($this->logger) === true){
             $this->logger->log($level, $message,$context);
@@ -456,7 +475,7 @@ class Crawler
 
     /**
      * Normalize link (remove hash, etc.)
-     * @param  string $url
+     * @param  string $uri
      * @return string
      */
     protected function normalizeLink($uri)
@@ -465,16 +484,21 @@ class Crawler
     }
 
     /**
-     * extrating the relative path from url string
-     * @param  type $url
-     * @return type
+     * extrating the relative path from url string     
+     * @param  string $url
+     * @param  string $sourceUrl
+     * @return string
      */
-    protected function getPathFromUrl($url)
-    {
-	if(!$this->checkIfCrawlable($url)){
+    protected function getPathFromUrl($url, $sourceUrl = null)
+    {        
+        if(is_null($sourceUrl)===true){
+            $sourceUrl = $this->baseUrl;
+        }
+        
+	if($this->checkIfCrawlable($url) === false){
 	    $ret = $url;
 	}elseif($this->localFile === true){            
-            $trimmedPath = dirname($this->baseUrl);
+            $trimmedPath = dirname($sourceUrl);
             
             if(strpos($url,'http://')===0 || strpos($url,'https://')===0){ //different domain name
                 $ret = $url; 
@@ -486,20 +510,20 @@ class Crawler
                 $ret = $trimmedPath.'/'.$url;
             }            
         }else{
-            $schemaAndHost = parse_url($this->baseUrl, PHP_URL_SCHEME).'://'.
-                parse_url($this->baseUrl, PHP_URL_HOST);        
+            $schemaAndHost = parse_url($sourceUrl, PHP_URL_SCHEME).'://'.
+                parse_url($sourceUrl, PHP_URL_HOST);        
             
             if (strpos($url, $schemaAndHost) === 0 && $url !== $schemaAndHost) {
                 $ret = str_replace($schemaAndHost, '', $url);
             }elseif(strpos($url,'http://')===0 || strpos($url,'https://')===0){ //different domain name
                 $ret = $url; 
             } elseif(strpos($url,'/')!==0) {
-                $path = rtrim(parse_url($this->baseUrl,PHP_URL_PATH),'/');                
+                $path = rtrim(parse_url($sourceUrl,PHP_URL_PATH),'/');                
                 $ret = $path.'/'.$url;
             } else {
                 $ret = $url;
             }            
-        }
+        }        
         return $ret;
     }
 
@@ -510,6 +534,7 @@ class Crawler
      * @return string
      */
     protected function getAbsoluteUrl($nodeUrl, $parentUrl = null){
+
         $urlParts = parse_url($this->baseUrl);        
         
         if(strpos($nodeUrl,'http://')===0 || strpos($nodeUrl,'https://')===0){
@@ -530,10 +555,8 @@ class Crawler
             }
         }elseif($this->localFile===true){
             $ret = dirname($parentUrl).'/'.$nodeUrl;
-        }else{
-            $ret = $nodeUrl;
         }
-        
+
         return $ret;
     }
 

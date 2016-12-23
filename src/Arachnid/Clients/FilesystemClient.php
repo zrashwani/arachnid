@@ -20,11 +20,9 @@ class FilesystemClient extends Client
      */
     protected function doRequest($request)
     {
-        if(file_exists($request->getUri()) === true){
-            $file = $request->getUri();
-        }else{
-            $file = $this->getFilePath($request->getUri());
-        }
+
+        $file = $this->getFilePath($request->getUri());
+        
         if (!file_exists($file)) {
             return new Response('Page not found', 404, []);
         }
