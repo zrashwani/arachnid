@@ -45,11 +45,13 @@ Here's a quick demo to crawl a website:
 
 ## Advanced Usage:
    There are other options you can set to the crawler:
+
    <?php
+
     // ... initialize    
     $crawler = new \Arachnid\Crawler($url, $linkDepth);
 
-    //set logger for crawler (compatible with PSR-4)
+    //set logger for crawler activity (compatible with PSR-4)
     $logger = new \Monolog\Logger('crawler logger');
     $logger->pushHandler(new \Monolog\Handler\StreamHandler(sys_get_temp_dir().'/crawler.log'));
     $client->setLogger($logger)
