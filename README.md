@@ -46,8 +46,7 @@ Here's a quick demo to crawl a website:
 ## Advanced Usage:
    There are other options you can set to the crawler:
 
-   <?php
-
+    <?php
     // ... initialize    
     $crawler = new \Arachnid\Crawler($url, $linkDepth);
 
