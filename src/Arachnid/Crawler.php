@@ -86,8 +86,10 @@ class Crawler
     }
 
     /**
+     * 
      * Initiate the crawl
      * @param string $url
+     * @return \Arachnid\Crawler
      */
     public function traverse($url = null)
     {
@@ -104,6 +106,8 @@ class Crawler
         }
 
         $this->traverseSingle($url, $this->maxDepth);
+        
+        return $this;
     }
 
     /**

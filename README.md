@@ -20,7 +20,7 @@ manifest file:
 
     {
         "require": {
-            "codeguy/arachnid": "1.*"
+            "codeguy/arachnid": "dev-master"
         }
     }
 
@@ -33,13 +33,33 @@ Here's a quick demo to crawl a website:
     <?php
     require 'vendor/autoload.php';
 
-    // Initiate crawl
-    $crawler = new \Arachnid\Crawler('http://www.example.com', 3);
+    $url = 'http://www.example.com';
+    $linkDepth = 3;
+    // Initiate crawl    
+    $crawler = new \Arachnid\Crawler($url, $linkDepth);
     $crawler->traverse();
 
     // Get link data
     $links = $crawler->getLinks();
     print_r($links);
+
+## Advanced Usage:
+   There are other options you can set to the crawler:
+   <?php
+    // ... initialize    
+    $crawler = new \Arachnid\Crawler($url, $linkDepth);
+
+    //set logger for crawler (compatible with PSR-4)
+    $logger = new \Monolog\Logger('crawler logger');
+    $logger->pushHandler(new \Monolog\Handler\StreamHandler(sys_get_temp_dir().'/crawler.log'));
+    $client->setLogger($logger)
+
+    //filter links according to specific callback as closure
+    $links = $client->filterLinks(function($link){
+                        return (bool)preg_match('/.*\/blog.*$/u',$link); //crawling only blog links
+                    })
+                    ->traverse()
+                    ->getLinks();
 
 ## How to Contribute
 

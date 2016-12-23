@@ -250,16 +250,17 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          * test filtering links callback
          */
         public function testfilterCallback(){
-            $logger = new Logger('name');
+            $logger = new Logger('crawler logger');
             $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
             
             $client = new Crawler('https://github.com/blog/',2);
             
-            $client->setLogger($logger)
-                   ->filterLinks(function($link){
-                         return (bool)preg_match('/.*\/blog.*$/u',$link); //crawling only blog links
-                   })->traverse();
-            $links = $client->getLinks();
+            $links = $client->setLogger($logger)
+                            ->filterLinks(function($link){
+                                return (bool)preg_match('/.*\/blog.*$/u',$link); //crawling only blog links
+                            })
+                            ->traverse()
+                            ->getLinks();
             
             foreach($links as $uri => $link_info){
                 $this->assertRegExp('/.*\/blog.*$/u', isset($link_info['absolute_url'])?
