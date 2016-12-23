@@ -13,6 +13,7 @@ the PSR-2 coding standard.
 
 [![SensioLabsInsight](https://insight.sensiolabs.com/projects/8ff1e4b2-d8c8-4465-b9ea-f5db69c3c2d0/mini.png)](https://insight.sensiolabs.com/projects/8ff1e4b2-d8c8-4465-b9ea-f5db69c3c2d0)
 [![Build Status](https://travis-ci.org/zrashwani/arachnid.svg?branch=master)](https://travis-ci.org/zrashwani/arachnid)
+[![codecov](https://codecov.io/gh/zrashwani/arachnid/branch/master/graph/badge.svg)](https://codecov.io/gh/zrashwani/arachnid)
 
 ## How to Install
 
