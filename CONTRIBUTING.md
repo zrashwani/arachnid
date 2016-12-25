@@ -4,7 +4,8 @@
 
 1. Fork this repository
 2. Create a new branch for each feature or improvement
-3. Send a pull request from each feature branch
+3. Apply your code changes along with corresponding unit test
+4. Send a pull request from each feature branch
 
 It is very important to separate new features or improvements into separate feature branches,
 and to send a pull request for each branch. This allows me to review and pull in new features

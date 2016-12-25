@@ -48,27 +48,6 @@ Here's a quick demo to crawl a website:
 ## Advanced Usage:
    There are other options you can set to the crawler:
 
-   You can inject a PSR-3 logger object to monitor crawler functionality (like Monolog):
-
-    <?php    
-    $crawler = new \Arachnid\Crawler($url, $linkDepth); // ... initialize crawler   
-
-    //set logger for crawler activity (compatible with PSR-3)
-    $logger = new \Monolog\Logger('crawler logger');
-    $logger->pushHandler(new \Monolog\Handler\StreamHandler(sys_get_temp_dir().'/crawler.log'));
-    $cralwer->setLogger($logger);
-    ?>
-
-   You can set crawler to visit only pages with specific criteria by passing closure to `filterLinks` method:
-
-    <?php
-    //filter links according to specific callback as closure
-    $links = $cralwer->filterLinks(function($link){
-                        //crawling only blog links
-                        return (bool)preg_match('/.*\/blog.*$/u',$link); 
-                    })
-                    ->traverse()
-                    ->getLinks();
 
    Set additional options to underlying guzzle client, by specifying array of options in constructor 
 or passing it to `setCrawlerOptions`:
@@ -91,11 +70,35 @@ or passing it to `setCrawlerOptions`:
                         
         $crawler->setCrawlerOptions($options);
 
+
+   You can inject a [PSR-3][psr3] compliant logger object to monitor crawler activity (like [Monolog][monolog]):
+
+    <?php    
+    $crawler = new \Arachnid\Crawler($url, $linkDepth); // ... initialize crawler   
+
+    //set logger for crawler activity (compatible with PSR-3)
+    $logger = new \Monolog\Logger('crawler logger');
+    $logger->pushHandler(new \Monolog\Handler\StreamHandler(sys_get_temp_dir().'/crawler.log'));
+    $cralwer->setLogger($logger);
+    ?>
+
+   You can set crawler to visit only pages with specific criteria by specifying callback closure using `filterLinks` method:
+
+    <?php
+    //filter links according to specific callback as closure
+    $links = $cralwer->filterLinks(function($link){
+                        //crawling only blog links
+                        return (bool)preg_match('/.*\/blog.*$/u',$link); 
+                    })
+                    ->traverse()
+                    ->getLinks();
+
 ## How to Contribute
 
 1. Fork this repository
 2. Create a new branch for each feature or improvement
-3. Send a pull request from each feature branch
+3. Apply your code changes along with corresponding unit test
+4. Send a pull request from each feature branch
 
 It is very important to separate new features or improvements into separate feature branches,
 and to send a pull request for each branch. This allows me to review and pull in new features
@@ -118,3 +121,5 @@ MIT Public License
 
 [composer]: http://getcomposer.org/
 [psr2]: https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md
+[psr3]: https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-3-logger-interface.md
+[monolog]: https://github.com/Seldaek/monolog
