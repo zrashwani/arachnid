@@ -172,15 +172,13 @@ class Crawler
         $filterLinks = $this->filterCallback;
         if($this->filterCallback !== null && $filterLinks($url) === false){                
                 $this->links[$hash]['dont_visit'] = true;
-                $this->log(LogLevel::INFO,$url.' skipping url not matching filter criteria', ['depth'=>$depth]);
+                $this->log(LogLevel::INFO,'skipping '.$url.' url not matching filter criteria', ['depth'=>$depth]);
                 return;
         }
         
-        $this->log(LogLevel::INFO,$url. ' crawling in process', ['depth'=>$depth]);
-
         try {
+            $this->log(LogLevel::INFO,'crawling '.$url. ' in process', ['depth'=>$depth]);
             $client = $this->getScrapClient();
-
             $crawler = $client->request('GET', $url);                    
             $statusCode = $client->getResponse()->getStatus();
             
@@ -189,8 +187,7 @@ class Crawler
             }else{
                 $hash = $this->getPathFromUrl($url, $this->baseUrl);            
             }
-            $this->links[$hash]['status_code'] = $statusCode;
-            $this->log(LogLevel::INFO,$url.' status code='.$statusCode);
+            $this->links[$hash]['status_code'] = $statusCode;            
 
             if ($statusCode === 200) {
                 $content_type = $client->getResponse()->getHeader('Content-Type');
@@ -297,7 +294,7 @@ class Crawler
             if($filterCallback && $filterCallback($url)===false &&
                     isset($this->links[$hash]) === false){                   
                     $this->links[$hash]['dont_visit'] = true;                    
-                    $this->log(LogLevel::INFO,'skipping link not match filter criteria '.$url);
+                    $this->log(LogLevel::INFO,'skipping '.$url.' link not match filter criteria');
                     return;
             }          
             if (isset($this->links[$hash]) === false) {
@@ -372,10 +369,13 @@ class Crawler
                        $childLinks[$hash]['visited'] = false;
                     }
                     $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
-                } else {
+                } else {                    
                     $childLinks[$hash]['visited'] = false;
                     $childLinks[$hash]['dont_visit'] = true;
                     $childLinks[$hash]['external_link'] = false;                    
+                    if(!isset($this->links[$hash]['dont_visit'])){ //not already added to all links
+                        $this->log(LogLevel::INFO, 'skipping '.$hash.' not crawlable link');
+                    }
                 }
             }
         });
@@ -397,7 +397,7 @@ class Crawler
         $this->logger = $logger;
         return $this;
     }
-
+    
     /**
      * Extract meta title/description/keywords information from url
      * @param \Symfony\Component\DomCrawler\Crawler $crawler
@@ -428,8 +428,7 @@ class Crawler
             $crawler->filter('h1')->each(function (DomCrawler $node, $i) use ($url) {
                 $this->links[$url]['h1_contents'][$i] = trim($node->text());
             });
-        }        
-        $this->log(LogLevel::INFO,$url.' extracted title: '.$this->links[$url]['title']);
+        }                
     }
 
     /**

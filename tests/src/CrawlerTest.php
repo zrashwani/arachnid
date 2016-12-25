@@ -294,7 +294,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testMetaInfo(){
 		$filePath = __DIR__.'/../data/index.html';
-		$crawler = new Crawler($filePath,1, ['localFile'=>true]); //non existing client		
+		$crawler = new Crawler($filePath,1, ['localFile'=>true]); 
 		$crawler->traverse();
 		$links = $crawler->getLinks();
 				
@@ -304,6 +304,9 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 		$this->assertEquals($links[$filePath]['meta_keywords'],'keywords1, keywords2');                				
 	}
         
+        /**
+         * test setting guzzle options
+         */
         public function testConfigureGuzzleOptions(){
             
             $options = array(
@@ -335,4 +338,27 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
             $this->assertArrayHasKey('auth', $actualConfigs);            
         }
         
+        public function testNotVisitUnCrawlableUrl(){
+
+                $testHandler = new \Monolog\Handler\TestHandler();
+                $logger = new Logger('test logger');
+                $logger->pushHandler($testHandler);
+                
+                $filePath = __DIR__.'/../data/index.html';
+		$crawler = new Crawler($filePath,2, ['localFile'=>true]);             
+                $crawler->setLogger($logger);
+                $crawler->traverse();
+                
+                
+                $this->assertFalse(
+                        $testHandler->hasRecordThatMatches(
+                                '/.*(crawling\stel\:).*/', 200)); 
+                $this->assertEquals(
+                        1,
+                        $testHandler->hasRecordThatMatches(
+                                '/.*(skipping\stel\:).*/', 200)
+                        );
+                
+                
+        }
 }
