@@ -57,7 +57,7 @@ class Crawler
 
     /**
      * whether file to be crawled is local file or remote one
-     * @var boolean 
+     * @var boolean
      */
     protected $localFile;
     
@@ -85,13 +85,13 @@ class Crawler
      * @param int    $maxDepth depth of links to be crawled
      * @param array  $config guzzle client extra options
      */
-    public function __construct($baseUrl, $maxDepth = 3, $config=[])
+    public function __construct($baseUrl, $maxDepth = 3, $config = [])
     {
         $this->baseUrl = $baseUrl;
         $this->maxDepth = $maxDepth;
         $this->links = array();
         $this->localFile  = isset($config['localFile'])===true?
-                                  $config['localFile']:false; 
+                                  $config['localFile']:false;
         unset($config['localFile']);
         
         $this->setCrawlerOptions($config);
@@ -101,12 +101,13 @@ class Crawler
      * set crawler options
      * @param array $config
      */
-    public function setCrawlerOptions(array $config){
+    public function setCrawlerOptions(array $config)
+    {
         $this->configOptions = $config;
     }
 
     /**
-     * 
+     *
      * Initiate the crawl
      * @param string $url
      * @return \Arachnid\Crawler
@@ -136,14 +137,14 @@ class Crawler
      */
     public function getLinks()
     {
-        if($this->filterCallback === null){
+        if ($this->filterCallback === null) {
             $links = $this->links;
-        }else{
-            $links = array_filter($this->links, function($link_info){
-                if(isset($link_info['dont_visit'])===true &&
-                        $link_info['dont_visit']===true){
+        } else {
+            $links = array_filter($this->links, function ($link_info) {
+                if (isset($link_info['dont_visit'])===true &&
+                        $link_info['dont_visit']===true) {
                     return false;
-                }else{
+                } else {
                     return true;
                 }
             });
@@ -159,100 +160,100 @@ class Crawler
      */
     protected function traverseSingle($url, $depth)
     {
-        if($depth<1){
+        if ($depth<1) {
             return;
         }
-        $hash = $this->getPathFromUrl($url);     
+        $hash = $this->getPathFromUrl($url);
         
-        if(isset($this->links[$hash]['dont_visit']) &&
-                $this->links[$hash]['dont_visit']===true){
+        if (isset($this->links[$hash]['dont_visit']) &&
+                $this->links[$hash]['dont_visit']===true) {
             return;
         }
         $this->links[$hash]['depth'] = $this->maxDepth - $depth;
         $filterLinks = $this->filterCallback;
-        if($this->filterCallback !== null && $filterLinks($url) === false){                
+        if ($this->filterCallback !== null && $filterLinks($url) === false) {
                 $this->links[$hash]['dont_visit'] = true;
-                $this->log(LogLevel::INFO,'skipping '.$url.' url not matching filter criteria', ['depth'=>$depth]);
+                $this->log(LogLevel::INFO, 'skipping '.$url.' url not matching filter criteria', ['depth'=>$depth]);
                 return;
         }
         
         try {
-            $this->log(LogLevel::INFO,'crawling '.$url. ' in process', ['depth'=>$depth]);
+            $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=>$depth]);
             $client = $this->getScrapClient();
-            $crawler = $client->request('GET', $url);                    
+            $crawler = $client->request('GET', $url);
             $statusCode = $client->getResponse()->getStatus();
             
-            if($url == $this->baseUrl){
+            if ($url == $this->baseUrl) {
                 $hash = $url;
-            }else{
-                $hash = $this->getPathFromUrl($url, $this->baseUrl);            
+            } else {
+                $hash = $this->getPathFromUrl($url, $this->baseUrl);
             }
-            $this->links[$hash]['status_code'] = $statusCode;            
+            $this->links[$hash]['status_code'] = $statusCode;
 
             if ($statusCode === 200) {
                 $content_type = $client->getResponse()->getHeader('Content-Type');
 
-                if (strpos($content_type, 'text/html') !== false) { //traverse children in case the response in HTML document only
+                //traverse children in case the response in HTML document only
+                if (strpos($content_type, 'text/html') !== false) {
                     $this->extractMetaInfo($crawler, $hash);
 
                     $childLinks = array();
-                    if (isset($this->links[$hash]['external_link']) === true 
+                    if (isset($this->links[$hash]['external_link']) === true
                             && $this->links[$hash]['external_link'] === false) {
                         $childLinks = $this->extractLinksInfo($crawler, $hash);
                     }
 
                     $this->links[$hash]['visited'] = true;
                     $this->traverseChildren($hash, $childLinks, $depth);
-                    
                 }
             }
         } catch (CurlException $e) {
-            if($filterLinks && $filterLinks($url) === false){
+            if ($filterLinks && $filterLinks($url) === false) {
                 $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
-            }else{
+            } else {
                 $this->links[$url]['status_code'] = '404';
                 $this->links[$url]['error_code'] = $e->getCode();
                 $this->links[$url]['error_message'] = $e->getMessage();
-                $this->log(LogLevel::ERROR,$url.' broken link detected code='.$e->getCode()); 
+                $this->log(LogLevel::ERROR, $url.' broken link detected code='.$e->getCode());
             }
         } catch (ClientException $e) {
-            if($filterLinks && $filterLinks($url) === false){
+            if ($filterLinks && $filterLinks($url) === false) {
                 $this->log(LogLevel::INFO, $url.' skipping storing broken link not matching filter criteria');
-            }else{            
+            } else {
                 $this->links[$url]['status_code'] = $e->getResponse()->getStatusCode();
                 $this->links[$url]['error_code'] = $e->getCode();
                 $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
-                $this->log(LogLevel::ERROR,$url.' broken link detected code='.$e->getResponse()->getStatusCode()); 
+                $this->log(LogLevel::ERROR, $url.' broken link detected code='.$e->getResponse()->getStatusCode());
             }
         } catch (\Exception $e) {
-            if($filterLinks && $filterLinks($url) === false){
+            if ($filterLinks && $filterLinks($url) === false) {
                 $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
-            }else{            
+            } else {
                 $this->links[$url]['status_code'] = '404';
                 $this->links[$url]['error_code'] = $e->getCode();
                 $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
-                $this->log(LogLevel::ERROR,$url.' broken link detected code='.$e->getCode());                 
+                $this->log(LogLevel::ERROR, $url.' broken link detected code='.$e->getCode());
             }
         }
     }
 
     /**
-     * create and configure goutte client used for scraping     
+     * create and configure goutte client used for scraping
      * @return GoutteClient
      */
     public function getScrapClient()
-    {        
-        if(!$this->scrapClient){
-            if($this->localFile ===false){
+    {
+        if (!$this->scrapClient) {
+            if ($this->localFile ===false) {
                 //default client will be Goutte php Scrapper
                 $client = new GoutteClient();
                 $client->followRedirects();
                 $configOptions = $this->configureGuzzleOptions();
                 $guzzleClient = new \GuzzleHttp\Client($configOptions);
                 $client->setClient($guzzleClient);
-            }else{
+            } else {
                 //local file system crawler
-                $client = new Clients\FilesystemClient(); 
+                $client = new Clients\FilesystemClient();
             }
             $this->scrapClient = $client;
         }
@@ -260,7 +261,8 @@ class Crawler
         return $this->scrapClient;
     }
 
-    public function setScrapClient($client){
+    public function setScrapClient($client)
+    {
         $this->scrapClient = $client;
     }
         
@@ -269,7 +271,8 @@ class Crawler
      * @param \Closure $filterCallback
      * @return \Arachnid\Crawler
      */
-    public function filterLinks(\Closure $filterCallback){
+    public function filterLinks(\Closure $filterCallback)
+    {
         $this->filterCallback = $filterCallback;
         return $this;
     }
@@ -286,30 +289,33 @@ class Crawler
             $filterCallback = $this->filterCallback;
             $hash = $this->getPathFromUrl($url, $sourceUrl);
             
-            if(isset($this->links[$hash]['dont_visit']) &&
-                    $this->links[$hash]['dont_visit']===true){
+            if (isset($this->links[$hash]['dont_visit']) &&
+                    $this->links[$hash]['dont_visit']===true) {
                 return;
             }
             
-            if($filterCallback && $filterCallback($url)===false &&
-                    isset($this->links[$hash]) === false){                   
-                    $this->links[$hash]['dont_visit'] = true;                    
-                    $this->log(LogLevel::INFO,'skipping '.$url.' link not match filter criteria');
+            if ($filterCallback && $filterCallback($url)===false &&
+                    isset($this->links[$hash]) === false) {
+                    $this->links[$hash]['dont_visit'] = true;
+                    $this->log(LogLevel::INFO, 'skipping '.$url.' link not match filter criteria');
                     return;
-            }          
+            }
             if (isset($this->links[$hash]) === false) {
                 $this->links[$hash] = $info;
             } else {
-                $this->links[$hash]['original_urls'] = isset($this->links[$hash]['original_urls']) 
-                        ? array_merge($this->links[$hash]['original_urls'], $info['original_urls']) 
+                $this->links[$hash]['original_urls'] = isset($this->links[$hash]['original_urls'])
+                        ? array_merge($this->links[$hash]['original_urls'], $info['original_urls'])
                         : $info['original_urls'];
-                $this->links[$hash]['links_text'] = isset($this->links[$hash]['links_text']) 
-                        ? array_merge($this->links[$hash]['links_text'], $info['links_text']) 
+                $this->links[$hash]['links_text'] = isset($this->links[$hash]['links_text'])
+                        ? array_merge($this->links[$hash]['links_text'], $info['links_text'])
                         : $info['links_text'];
-                if (isset($this->links[$hash]['visited']) === true && 
+                if (isset($this->links[$hash]['visited']) === true &&
                         $this->links[$hash]['visited'] === true) {
                     $oldFrequency = isset($info['frequency']) ? $info['frequency'] : 0;
-                    $this->links[$hash]['frequency'] = isset($this->links[$hash]['frequency']) ? $this->links[$hash]['frequency'] + $oldFrequency : 1;
+                    $this->links[$hash]['frequency'] =
+                            isset($this->links[$hash]['frequency'])
+                            ? $this->links[$hash]['frequency'] + $oldFrequency
+                            : 1;
                 }
             }
 
@@ -317,9 +323,9 @@ class Crawler
                 $this->links[$hash]['visited'] = false;
             }
 
-            if (empty($url) === false && $this->links[$hash]['visited'] === false && 
+            if (empty($url) === false && $this->links[$hash]['visited'] === false &&
                     isset($this->links[$hash]['dont_visit']) === false) {
-                $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);      
+                $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);
                 $this->traverseSingle($normalizedUrl, $depth-1);
             }
         }
@@ -340,14 +346,14 @@ class Crawler
             $nodeUrlIsCrawlable = $this->checkIfCrawlable($nodeUrl);
 
             
-            $normalizedLink = $this->normalizeLink($nodeUrl);            
+            $normalizedLink = $this->normalizeLink($nodeUrl);
             $hash = $this->getPathFromUrl($normalizedLink, $url);
             $filterLinks = $this->filterCallback;
-            if(isset($this->links[$hash]['dont_visit']) &&
-                    $this->links[$hash]['dont_visit']===true){
+            if (isset($this->links[$hash]['dont_visit']) &&
+                    $this->links[$hash]['dont_visit']===true) {
                 return;
             }
-            if($filterLinks && $filterLinks($hash) === false){                
+            if ($filterLinks && $filterLinks($hash) === false) {
                 $this->links[$hash]['dont_visit'] = true;
                 $this->log(LogLevel::INFO, 'skipping '.$hash. ' not matching filter criteira');
                 return;
@@ -358,22 +364,23 @@ class Crawler
                 $childLinks[$hash]['links_text'][$nodeText] = $nodeText;
 
                 if ($nodeUrlIsCrawlable === true) {
-                    // Ensure URL is formatted as absolute                    
+                    // Ensure URL is formatted as absolute
                     $childLinks[$hash]['absolute_url'] = $this->getAbsoluteUrl($nodeUrl, $url);
 
                     // Is this an external URL?
                     $childLinks[$hash]['external_link'] = $this->checkIfExternal($childLinks[$hash]['absolute_url']);
 
                     //frequency or visited
-                    if(isset($childLinks[$hash]['visited']) === false){
-                       $childLinks[$hash]['visited'] = false;
+                    if (isset($childLinks[$hash]['visited']) === false) {
+                        $childLinks[$hash]['visited'] = false;
                     }
-                    $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ? $childLinks[$hash]['frequency'] + 1 : 1;
-                } else {                    
+                    $childLinks[$hash]['frequency'] = isset($childLinks[$hash]['frequency']) ?
+                            $childLinks[$hash]['frequency'] + 1 : 1;
+                } else {
                     $childLinks[$hash]['visited'] = false;
                     $childLinks[$hash]['dont_visit'] = true;
-                    $childLinks[$hash]['external_link'] = false;                    
-                    if(!isset($this->links[$hash]['dont_visit'])){ //not already added to all links
+                    $childLinks[$hash]['external_link'] = false;
+                    if (!isset($this->links[$hash]['dont_visit'])) { //not already added to all links
                         $this->log(LogLevel::INFO, 'skipping '.$hash.' not crawlable link');
                     }
                 }
@@ -393,7 +400,8 @@ class Crawler
      * @param $logger \Psr\Log\LoggerInterface
      * @return \Arachnid\Crawler
      */
-    public function setLogger($logger){
+    public function setLogger($logger)
+    {
         $this->logger = $logger;
         return $this;
     }
@@ -428,7 +436,7 @@ class Crawler
             $crawler->filter('h1')->each(function (DomCrawler $node, $i) use ($url) {
                 $this->links[$url]['h1_contents'][$i] = trim($node->text());
             });
-        }                
+        }
     }
 
     /**
@@ -467,9 +475,9 @@ class Crawler
      */
     protected function checkIfExternal($url)
     {
-        if($this->localFile===true){
+        if ($this->localFile===true) {
             $ret = strpos($url, 'http://')===0 || strpos($url, 'https://')===0;
-        }else{
+        } else {
             $baseUrlTrimmed = str_replace(array('http://', 'https://'), '', $this->baseUrl);
             $baseUrlTrimmed = explode('/', $baseUrlTrimmed)[0];
 
@@ -484,9 +492,10 @@ class Crawler
      * @param string $message
      * @param array $context
      */
-    protected function log($level, $message, array $context = array()){
-        if(isset($this->logger) === true){
-            $this->logger->log($level, $message,$context);
+    protected function log($level, $message, array $context = array())
+    {
+        if (isset($this->logger) === true) {
+            $this->logger->log($level, $message, $context);
         }
     }
 
@@ -501,76 +510,76 @@ class Crawler
     }
 
     /**
-     * extrating the relative path from url string     
+     * extrating the relative path from url string
      * @param  string $url
      * @param  string $sourceUrl
      * @return string
      */
     protected function getPathFromUrl($url, $sourceUrl = null)
-    {        
-        if(is_null($sourceUrl)===true){
+    {
+        if (is_null($sourceUrl)===true) {
             $sourceUrl = $this->baseUrl;
         }
         
-	if($this->checkIfCrawlable($url) === false){
-	    $ret = $url;
-	}elseif($this->localFile === true){            
+        if ($this->checkIfCrawlable($url) === false) {
+            $ret = $url;
+        } elseif ($this->localFile === true) {
             $trimmedPath = dirname($sourceUrl);
             
-            if(strpos($url,'http://')===0 || strpos($url,'https://')===0){ //different domain name
-                $ret = $url; 
-            }elseif(strpos($url,$trimmedPath) === 0){ //url full url begin with baseUrl name
+            if (strpos($url, 'http://')===0 || strpos($url, 'https://')===0) { //different domain name
                 $ret = $url;
-            }elseif(strpos($url,'/')===0){           
+            } elseif (strpos($url, $trimmedPath) === 0) { //url full url begin with baseUrl name
+                $ret = $url;
+            } elseif (strpos($url, '/')===0) {
                 $ret = $trimmedPath.$url;
-            }else{
+            } else {
                 $ret = $trimmedPath.'/'.$url;
-            }            
-        }else{
+            }
+        } else {
             $schemaAndHost = parse_url($sourceUrl, PHP_URL_SCHEME).'://'.
-                parse_url($sourceUrl, PHP_URL_HOST);        
+            parse_url($sourceUrl, PHP_URL_HOST);
             
             if (strpos($url, $schemaAndHost) === 0 && $url !== $schemaAndHost) {
                 $ret = str_replace($schemaAndHost, '', $url);
-            }elseif(strpos($url,'http://')===0 || strpos($url,'https://')===0){ //different domain name
-                $ret = $url; 
-            } elseif(strpos($url,'/')!==0) {
-                $path = rtrim(parse_url($sourceUrl,PHP_URL_PATH),'/');                
+            } elseif (strpos($url, 'http://')===0 || strpos($url, 'https://')===0) { //different domain name
+                $ret = $url;
+            } elseif (strpos($url, '/')!==0) {
+                $path = rtrim(parse_url($sourceUrl, PHP_URL_PATH), '/');
                 $ret = $path.'/'.$url;
             } else {
                 $ret = $url;
-            }            
-        }        
+            }
+        }
         return $ret;
     }
 
-    /** 
+    /**
      * converting nodeUrl to absolute url form
      * @param string      $nodeUrl
      * @param string|NULL $parentUrl
      * @return string
      */
-    protected function getAbsoluteUrl($nodeUrl, $parentUrl = null){
+    protected function getAbsoluteUrl($nodeUrl, $parentUrl = null)
+    {
 
-        $urlParts = parse_url($this->baseUrl);        
+        $urlParts = parse_url($this->baseUrl);
         
-        if(strpos($nodeUrl,'http://')===0 || strpos($nodeUrl,'https://')===0){
+        if (strpos($nodeUrl, 'http://')===0 || strpos($nodeUrl, 'https://')===0) {
                 $ret = $nodeUrl;
-        }elseif(strpos($nodeUrl,'#') === 0){
-            $ret = rtrim($this->baseUrl,'/').$nodeUrl;   
-        }elseif(!$this->checkIfCrawlable($nodeUrl)){
-            $ret = $nodeUrl;   
-        }elseif(strpos($nodeUrl,'//') === 0){
+        } elseif (strpos($nodeUrl, '#') === 0) {
+            $ret = rtrim($this->baseUrl, '/').$nodeUrl;
+        } elseif (!$this->checkIfCrawlable($nodeUrl)) {
+            $ret = $nodeUrl;
+        } elseif (strpos($nodeUrl, '//') === 0) {
                 $ret = (isset($urlParts['scheme'])=== true?
-                        $urlParts['scheme']:'http').':'.$nodeUrl;            
-        }elseif(isset($urlParts['scheme'])){            
-            
-            if(strpos($nodeUrl,'/')===0){
+                        $urlParts['scheme']:'http').':'.$nodeUrl;
+        } elseif (isset($urlParts['scheme'])) {
+            if (strpos($nodeUrl, '/')===0) {
                 $ret = $urlParts['scheme'] . '://' . $urlParts['host'] . $nodeUrl;
-            }else{
+            } else {
                 $ret = $this->baseUrl.$nodeUrl;
             }
-        }elseif($this->localFile===true){
+        } elseif ($this->localFile===true) {
             $ret = dirname($parentUrl).'/'.$nodeUrl;
         }
 
@@ -581,17 +590,18 @@ class Crawler
      * configure guzzle objects
      * @return array
      */
-    protected function configureGuzzleOptions(){
-        $cookieName = time()."_".substr(md5(microtime()),0,5).".txt"; 
+    protected function configureGuzzleOptions()
+    {
+        $cookieName = time()."_".substr(md5(microtime()), 0, 5).".txt";
                 
         $defaultConfig = array(
-            'curl' => array(        
+            'curl' => array(
                 CURLOPT_COOKIEJAR      => $cookieName,
                 CURLOPT_COOKIEFILE     => $cookieName,
             ),
         );
-        $configOptions = array_merge_recursive($this->configOptions,$defaultConfig);
+        $configOptions = array_merge_recursive($this->configOptions, $defaultConfig);
         
-        return $configOptions;                
-    }    
+        return $configOptions;
+    }
 }
