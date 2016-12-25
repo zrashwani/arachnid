@@ -35,7 +35,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          * test crawling non-existent page
          */
 	public function testFileNotExist(){
-		$crawler = new Crawler('test',1, true); //non existing url/path
+		$crawler = new Crawler('test',1, ['localFile'=>true]); //non existing url/path
 
 		$crawler->traverse();		
 		$ret = $crawler->getLinks();
@@ -49,7 +49,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testScrapperClient1Level(){
 		$filePath = __DIR__.'/../data/index.html';
-		$crawler = new Crawler($filePath,1, true);
+		$crawler = new Crawler($filePath,1, ['localFile'=>true]);
 		$crawler->traverse();
 		$links = $crawler->getLinks();
 		
@@ -64,7 +64,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testScrapperClient2Level(){
 		$filePath = __DIR__.'/../data/index.html';
-		$crawler = new Crawler($filePath,1,true); 
+		$crawler = new Crawler($filePath,1,['localFile'=>true]); 
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
@@ -78,7 +78,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testScrapperClient3Level(){
 		$filePath = __DIR__.'/../data/index.html';
-		$crawler = new Crawler($filePath,5,true); 
+		$crawler = new Crawler($filePath,5,['localFile'=>true]); 
                 
                 $logger = new Logger('crawling logger');
                 $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));                
@@ -100,7 +100,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testBrokenLink(){
 		$filePath = __DIR__.'/../data/sub_dir/level1-3.html2';
-		$crawler = new Crawler($filePath,2,true); 
+		$crawler = new Crawler($filePath,2,['localFile'=>true]); 
 		$crawler->traverse();
 
 		$links = $crawler->getLinks();		
@@ -118,7 +118,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
                 );            
                 $method->setAccessible(true);
                 
-		$crawler = new Crawler($baseUrl,1,$localFile); 
+		$crawler = new Crawler($baseUrl,1,['localFile'=>$localFile]); 
                 $retUrl = $method->invoke($crawler, $nodeUrl);
 		$this->assertEquals($retUrl,$expectedUrl);
 	}
@@ -223,7 +223,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
             $method = new \ReflectionMethod(Crawler::class, 'getPathFromUrl');
             $method->setAccessible(true);
             
-            $actual = $method->invoke(new Crawler($baseUrl,2,$localFile), $uri);            
+            $actual = $method->invoke(new Crawler($baseUrl,2,['localFile'=>$localFile]), $uri);            
             $this->assertEquals($expected, $actual, 'error on base url '.$baseUrl);
         }
 
@@ -294,7 +294,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
 	public function testMetaInfo(){
 		$filePath = __DIR__.'/../data/index.html';
-		$crawler = new Crawler($filePath,1, true); //non existing client		
+		$crawler = new Crawler($filePath,1, ['localFile'=>true]); //non existing client		
 		$crawler->traverse();
 		$links = $crawler->getLinks();
 				
@@ -302,6 +302,37 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 		$this->assertEquals($links[$filePath]['title'],'Main Page');                		
 		$this->assertEquals($links[$filePath]['meta_description'],'meta description for main page');                		
 		$this->assertEquals($links[$filePath]['meta_keywords'],'keywords1, keywords2');                				
-	}	
+	}
+        
+        public function testConfigureGuzzleOptions(){
+            
+            $options = array(
+              'curl' => array(
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_SSL_VERIFYPEER => false,
+              ),
+              'timeout' => 30,
+              'connect_timeout' => 30,
+            );
+            
+            $crawler = new Crawler('http://github.com',2);
+            $crawler->setCrawlerOptions($options);
+            
+            /*@var $guzzleClient \GuzzleHttp\Client */
+            $guzzleClient = $crawler->getScrapClient()->getClient();
+            
+            $this->assertEquals(30,$guzzleClient->getConfig('timeout'));
+            $this->assertEquals(30,$guzzleClient->getConfig('connect_timeout'));
+            $this->assertEquals(false,$guzzleClient->getConfig('curl')[CURLOPT_SSL_VERIFYHOST]);
+            
+            $crawler2 = new Crawler('http://github.com',2, array(
+                'auth' => array('username', 'password'),
+            ));
+            /*@var $guzzleClient \GuzzleHttp\Client */
+            $guzzleClient2 = $crawler2->getScrapClient()->getClient();  
+            
+            $actualConfigs = $guzzleClient2->getConfig();
+            $this->assertArrayHasKey('auth', $actualConfigs);            
+        }
         
 }

@@ -5,6 +5,7 @@ namespace Arachnid;
 use Goutte\Client as GoutteClient;
 use Symfony\Component\BrowserKit\Client as ScrapClient;
 use Guzzle\Http\Exception\CurlException;
+use GuzzleHttp\Exception\ClientException;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 use Psr\Log\LogLevel;
 
@@ -73,16 +74,35 @@ class Crawler
     protected $logger;
     
     /**
-     * Constructor
-     * @param string $baseUrl
-     * @param int    $maxDepth
+     * store options to guzzle client associated with crawler
+     * @var array
      */
-    public function __construct($baseUrl, $maxDepth = 3, $localFile = false)
+    protected $configOptions;
+    
+    /**
+     * Constructor
+     * @param string $baseUrl base url to be crawled
+     * @param int    $maxDepth depth of links to be crawled
+     * @param array  $config guzzle client extra options
+     */
+    public function __construct($baseUrl, $maxDepth = 3, $config=[])
     {
         $this->baseUrl = $baseUrl;
         $this->maxDepth = $maxDepth;
         $this->links = array();
-        $this->localFile  = $localFile;    
+        $this->localFile  = isset($config['localFile'])===true?
+                                  $config['localFile']:false; 
+        unset($config['localFile']);
+        
+        $this->setCrawlerOptions($config);
+    }
+    
+    /**
+     * set crawler options
+     * @param array $config
+     */
+    public function setCrawlerOptions(array $config){
+        $this->configOptions = $config;
     }
 
     /**
@@ -189,7 +209,7 @@ class Crawler
                     
                 }
             }
-        } catch (\Guzzle\Http\Exception\CurlException $e) {
+        } catch (CurlException $e) {
             if($filterLinks && $filterLinks($url) === false){
                 $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
             }else{
@@ -198,7 +218,7 @@ class Crawler
                 $this->links[$url]['error_message'] = $e->getMessage();
                 $this->log(LogLevel::ERROR,$url.' broken link detected code='.$e->getCode()); 
             }
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
+        } catch (ClientException $e) {
             if($filterLinks && $filterLinks($url) === false){
                 $this->log(LogLevel::INFO, $url.' skipping storing broken link not matching filter criteria');
             }else{            
@@ -230,15 +250,9 @@ class Crawler
                 //default client will be Goutte php Scrapper
                 $client = new GoutteClient();
                 $client->followRedirects();
-                $cookieName = time()."_".substr(md5(microtime()),0,5).".txt"; 
-
-                $guzzleClient = new \GuzzleHttp\Client(array(
-                    'curl' => array(        
-                        CURLOPT_COOKIEJAR      => $cookieName,
-                        CURLOPT_COOKIEFILE     => $cookieName,
-                    ),
-                ));
-               $client->setClient($guzzleClient);
+                $configOptions = $this->configureGuzzleOptions();
+                $guzzleClient = new \GuzzleHttp\Client($configOptions);
+                $client->setClient($guzzleClient);
             }else{
                 //local file system crawler
                 $client = new Clients\FilesystemClient(); 
@@ -252,7 +266,7 @@ class Crawler
     public function setScrapClient($client){
         $this->scrapClient = $client;
     }
-    
+        
     /**
      * set callback to filter links by specific criteria
      * @param \Closure $filterCallback
@@ -564,4 +578,21 @@ class Crawler
         return $ret;
     }
 
+    /**
+     * configure guzzle objects
+     * @return array
+     */
+    protected function configureGuzzleOptions(){
+        $cookieName = time()."_".substr(md5(microtime()),0,5).".txt"; 
+                
+        $defaultConfig = array(
+            'curl' => array(        
+                CURLOPT_COOKIEJAR      => $cookieName,
+                CURLOPT_COOKIEFILE     => $cookieName,
+            ),
+        );
+        $configOptions = array_merge_recursive($this->configOptions,$defaultConfig);
+        
+        return $configOptions;                
+    }    
 }

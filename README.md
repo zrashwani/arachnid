@@ -48,22 +48,48 @@ Here's a quick demo to crawl a website:
 ## Advanced Usage:
    There are other options you can set to the crawler:
 
-    <?php
-    // ... initialize    
-    $crawler = new \Arachnid\Crawler($url, $linkDepth);
+   You can inject a PSR-3 logger object to monitor crawler functionality (like Monolog):
 
-    //set logger for crawler activity (compatible with PSR-4)
+    <?php    
+    $crawler = new \Arachnid\Crawler($url, $linkDepth); // ... initialize crawler   
+
+    //set logger for crawler activity (compatible with PSR-3)
     $logger = new \Monolog\Logger('crawler logger');
     $logger->pushHandler(new \Monolog\Handler\StreamHandler(sys_get_temp_dir().'/crawler.log'));
-    $client->setLogger($logger)
+    $cralwer->setLogger($logger);
+    ?>
 
+   You can set crawler to visit only pages with specific criteria by passing closure to `filterLinks` method:
+
+    <?php
     //filter links according to specific callback as closure
-    $links = $client->filterLinks(function($link){
+    $links = $cralwer->filterLinks(function($link){
                         //crawling only blog links
                         return (bool)preg_match('/.*\/blog.*$/u',$link); 
                     })
                     ->traverse()
                     ->getLinks();
+
+   Set additional options to underlying guzzle client, by specifying array of options in constructor 
+or passing it to `setCrawlerOptions`:
+
+
+    <?php
+        //third parameter is the options used to configure guzzle client
+        $crawler = new \Arachnid\Crawler('http://github.com',2, 
+                                 ['auth'=>array('username', 'password')]);
+           
+        //or using separate method `setCrawlerOptions`
+        $options = array(
+            'curl' => array(
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ),
+            'timeout' => 30,
+            'connect_timeout' => 30,
+        );
+                        
+        $crawler->setCrawlerOptions($options);
 
 ## How to Contribute
 
