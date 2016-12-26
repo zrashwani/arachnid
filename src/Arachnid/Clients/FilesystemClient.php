@@ -3,7 +3,6 @@
 namespace Arachnid\Clients;
 
 use Symfony\Component\BrowserKit\Client;
-use Symfony\Component\BrowserKit\Request;
 use Symfony\Component\BrowserKit\Response;
 
 /**
