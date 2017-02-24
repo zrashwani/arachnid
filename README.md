@@ -79,14 +79,14 @@ or passing it to `setCrawlerOptions`:
     //set logger for crawler activity (compatible with PSR-3)
     $logger = new \Monolog\Logger('crawler logger');
     $logger->pushHandler(new \Monolog\Handler\StreamHandler(sys_get_temp_dir().'/crawler.log'));
-    $cralwer->setLogger($logger);
+    $crawler->setLogger($logger);
     ?>
 
    You can set crawler to visit only pages with specific criteria by specifying callback closure using `filterLinks` method:
 
     <?php
     //filter links according to specific callback as closure
-    $links = $cralwer->filterLinks(function($link){
+    $links = $crawler->filterLinks(function($link){
                         //crawling only blog links
                         return (bool)preg_match('/.*\/blog.*$/u',$link); 
                     })
