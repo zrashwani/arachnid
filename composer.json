@@ -1,18 +1,18 @@
 {
-    "name": "codeguy/arachnid",
+    "name": "zrashwani/arachnid",
     "type": "library",
     "description": "A crawler to find all unique internal pages on a given website",
     "keywords": ["crawl","spider","search","scrape"],
-    "homepage": "http://github.com/codeguy/arachnid",
+    "homepage": "http://github.com/zrashwani/arachnid",
     "license": "MIT",
     "authors": [
         {
-            "name": "Josh Lockhart",
-            "homepage": "http://www.joshlockhart.com/"
-        },
-        {
             "name": "Zeid Rashwani",
             "homepage": "http://zrashwani.com"
+        },
+        {
+            "name": "Josh Lockhart",
+            "homepage": "http://www.joshlockhart.com/"
         }
     ],
     "require": {

@@ -22,7 +22,7 @@ manifest file:
 
     {
         "require": {
-            "codeguy/arachnid": "dev-master"
+            "zrashwani/arachnid": "dev-master"
         }
     }
 
