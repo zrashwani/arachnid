@@ -114,6 +114,9 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $links = $crawler->getLinks();
                 
         $this->assertEquals($links[$filePath]['status_code'], 404);
+        
+        $collection = new LinksCollection($links);
+        $this->assertEquals($collection->getBrokenLinks()->count(),1);
     }
 
     /**
@@ -122,11 +125,11 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
      */
     public function testGetAbsoluteUrl($baseUrl, $nodeUrl, $expectedUrl, $localFile = false)
     {
-                $method = new \ReflectionMethod(
-                    \Arachnid\Crawler::class,
-                    'getAbsoluteUrl'
-                );
-                $method->setAccessible(true);
+        $method = new \ReflectionMethod(
+            \Arachnid\Crawler::class,
+            'getAbsoluteUrl'
+        );
+        $method->setAccessible(true);
                 
         $crawler = new Crawler($baseUrl, 1, ['localFile'=>$localFile]);
                 $retUrl = $method->invoke($crawler, $nodeUrl);
@@ -282,6 +285,24 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
             $this->assertRegExp('/.*\/blog.*$/u', isset($link_info['absolute_url'])?
                     $link_info['absolute_url']:$uri);
         }
+        
+        $testHandler = new \Monolog\Handler\TestHandler();
+        $logger2 = new Logger('crawler logger');
+        $logger2->pushHandler($testHandler);
+        
+        $filePath = __DIR__.'/../data/sub_dir/index.html';
+        $crawler2 = new Crawler($filePath, 2, ['localFile'=>true]);
+        $crawler2
+                ->setLogger($logger2)
+                ->filterLinks(function($link){
+                    return strpos($link,'level1-2.html')!==false;
+                })
+                ->traverse();
+        $testHandler->hasRecordThatMatches(
+                '/.*(skipping\s"level1-2.html).*/',
+                200
+        );
+        
     }
         
         /**
@@ -320,6 +341,24 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($links[$filePath]['title'], 'Main Page');
         $this->assertEquals($links[$filePath]['meta_description'], 'meta description for main page');
         $this->assertEquals($links[$filePath]['meta_keywords'], 'keywords1, keywords2');
+    }
+    
+    /**
+     * testing depth functionality
+     */
+    public function testGetByDepth()
+    {
+        $filePath = __DIR__.'/../data/index.html';
+        $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
+        $crawler->traverse();
+        $links = $crawler->getLinks();
+        
+        $collection = new LinksCollection($links);
+        $depth1Links = $collection->getByDepth(1);
+        $depth2Links = $collection->getByDepth(2);
+        
+        $this->assertEquals($depth1Links->count(),3);
+        $this->assertEquals($depth2Links->count(),1);
     }
         
         /**
@@ -375,11 +414,11 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
                 '/.*(crawling\stel\:).*/',
                 200
             )
-        );
+        );       
         $this->assertEquals(
             1,
             $testHandler->hasRecordThatMatches(
-                '/.*(skipping\stel\:).*/',
+                '/.*(skipping\s"tel\:).*/',
                 200
             )
         );

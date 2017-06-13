@@ -116,17 +116,19 @@ class Crawler
     {
         if ($url === null) {
             $url = $this->baseUrl;
-            $this->links[$url] = array(
-                'links_text' => array('BASE_URL'),
-                'absolute_url' => $url,
-                'frequency' => 1,
-                'visited' => false,
-                'external_link' => false,
-                'original_urls' => array($url)
-            );
         }
+        
+        $this->links[$url] = array(
+            'links_text' => array('BASE_URL'),
+            'absolute_url' => $url,
+            'frequency' => 1,
+            'visited' => false,
+            'external_link' => false,
+            'original_urls' => array($url),
+            'source_link'   => "",
+        );        
 
-        $this->traverseSingle($url, $this->maxDepth);
+        $this->traverseSingle($url, 1);
         
         return $this;
     }
@@ -160,7 +162,7 @@ class Crawler
      */
     protected function traverseSingle($url, $depth)
     {
-        if ($depth<1) {
+        if ($depth>$this->maxDepth) {
             return;
         }
         $hash = $this->getPathFromUrl($url);
@@ -169,16 +171,16 @@ class Crawler
                 $this->links[$hash]['dont_visit']===true) {
             return;
         }
-        $this->links[$hash]['depth'] = $this->maxDepth - $depth;
+        
         $filterLinks = $this->filterCallback;
-        if ($this->filterCallback !== null && $filterLinks($url) === false) {
+        if ($filterLinks !== null && $filterLinks($url) === false) {
                 $this->links[$hash]['dont_visit'] = true;
-                $this->log(LogLevel::INFO, 'skipping '.$url.' url not matching filter criteria', ['depth'=>$depth]);
+                $this->log(LogLevel::INFO, 'skipping "'.$url.'" url not matching filter criteria', ['depth'=>$depth]);
                 return;
         }
         
         try {
-            $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=>$depth]);
+            $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=> $depth    ]);
             $client = $this->getScrapClient();
             $crawler = $client->request('GET', $url);
             $statusCode = $client->getResponse()->getStatus();
@@ -189,7 +191,7 @@ class Crawler
                 $hash = $this->getPathFromUrl($url, $this->baseUrl);
             }
             $this->links[$hash]['status_code'] = $statusCode;
-
+            $this->links[$hash]['depth'] = $depth;
             if ($statusCode === 200) {
                 $content_type = $client->getResponse()->getHeader('Content-Type');
 
@@ -293,6 +295,7 @@ class Crawler
                     $this->links[$hash]['dont_visit']===true) {
                 return;
             }
+
             
             if ($filterCallback && $filterCallback($url)===false &&
                     isset($this->links[$hash]) === false) {
@@ -302,7 +305,9 @@ class Crawler
             }
             if (isset($this->links[$hash]) === false) {
                 $this->links[$hash] = $info;
-            } else {
+		$this->links[$hash]['source_link'] = $this->getAbsoluteUrl($sourceUrl);
+		$this->links[$hash]['depth'] = $depth;
+            } else {		
                 $this->links[$hash]['original_urls'] = isset($this->links[$hash]['original_urls'])
                         ? array_merge($this->links[$hash]['original_urls'], $info['original_urls'])
                         : $info['original_urls'];
@@ -326,7 +331,7 @@ class Crawler
             if (empty($url) === false && $this->links[$hash]['visited'] === false &&
                     isset($this->links[$hash]['dont_visit']) === false) {
                 $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);
-                $this->traverseSingle($normalizedUrl, $depth-1);
+                $this->traverseSingle($normalizedUrl, $depth+1);
             }
         }
     }
@@ -381,7 +386,7 @@ class Crawler
                     $childLinks[$hash]['dont_visit'] = true;
                     $childLinks[$hash]['external_link'] = false;
                     if (!isset($this->links[$hash]['dont_visit'])) { //not already added to all links
-                        $this->log(LogLevel::INFO, 'skipping '.$hash.' not crawlable link');
+                        $this->log(LogLevel::INFO, 'skipping "'.$hash.'" not crawlable link');
                     }
                 }
             }

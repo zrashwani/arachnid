@@ -18,7 +18,8 @@
     "require": {
         "php": ">=5.6.0",
         "fabpot/goutte": "^3.1",
-        "monolog/monolog": "^1.22"
+        "monolog/monolog": "^1.22",
+        "illuminate/support": "^5.4"
     },
     "require-dev": {
         "phpunit/phpunit": "^4.6",

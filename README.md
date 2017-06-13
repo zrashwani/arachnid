@@ -93,6 +93,20 @@ or passing it to `setCrawlerOptions`:
                     ->traverse()
                     ->getLinks();
 
+    
+    
+    You can use `LinksCollection` class to get simple statistics about the links, as following:
+    <?php
+    $links = $crawler->traverse()
+                     ->getLinks();
+    $collection = new LinksCollection($links);
+
+    //getting broken links
+    $brokenLinks = $collection->getBrokenLinks();
+   
+    //getting links for specific depth
+    $depth2Links = $collection->getByDepth(2);
+
 ## How to Contribute
 
 1. Fork this repository
