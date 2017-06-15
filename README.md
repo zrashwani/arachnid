@@ -95,7 +95,8 @@ or passing it to `setCrawlerOptions`:
 
     
     
-    You can use `LinksCollection` class to get simple statistics about the links, as following:
+   You can use `LinksCollection` class to get simple statistics about the links, as following:
+
     <?php
     $links = $crawler->traverse()
                      ->getLinks();
