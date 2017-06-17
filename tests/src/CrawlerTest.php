@@ -80,26 +80,31 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $this->assertCount(8, $links);
     }
 
-        /**
-         * test crawling three levels pages
-         */
+    /**
+     * test crawling three levels pages
+     */
     public function testScrapperClient3Level()
     {
         $filePath = __DIR__.'/../data/index.html';
         $crawler = new Crawler($filePath, 5, ['localFile'=>true]);
                 
-                $logger = new Logger('crawling logger');
-                $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
-                $crawler->setLogger($logger);
+        $logger = new Logger('crawling logger');
+        $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
+        $crawler->setLogger($logger);
         $crawler->traverse();
 
         $links = $crawler->getLinks();
 
         $this->assertEquals($links[$filePath]['status_code'], 200);
         $this->greaterThan(8, count($links));
-                $this->assertArrayHasKey('http://facebook.com', $links);
-                $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level2-3.html', $links);
-                $this->assertEquals($links[__DIR__.'/../data/sub_dir/level2-3.html']['status_code'], 200);
+        
+        $this->assertArrayHasKey('http://facebook.com', $links);
+        $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level2-3.html', $links);
+        
+        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level2-3.html']['status_code']);
+        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level1-3.html']['status_code']);
+        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level1-4.html']['status_code']);
+        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level1-5.html']['status_code']);
     }
 
         /**
@@ -346,19 +351,20 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
     /**
      * testing depth functionality
      */
-    public function testGetByDepth()
+    public function testFilterByDepth()
     {
         $filePath = __DIR__.'/../data/index.html';
-        $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
+        $crawler = new Crawler($filePath, 3, ['localFile'=>true]);
         $crawler->traverse();
         $links = $crawler->getLinks();
         
         $collection = new LinksCollection($links);
-        $depth1Links = $collection->getByDepth(1);
-        $depth2Links = $collection->getByDepth(2);
+        $depth1Links = $collection->filterByDepth(1);
+        $depth2Links = $collection->filterByDepth(2);
         
-        $this->assertEquals($depth1Links->count(),3);
-        $this->assertEquals($depth2Links->count(),1);
+        $this->assertEquals(7, $depth1Links->count());
+        //ignoring already traversed links in previous levels
+        $this->assertEquals(6, $depth2Links->count()); 
     }
         
         /**

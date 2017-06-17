@@ -80,6 +80,12 @@ class Crawler
     protected $configOptions;
     
     /**
+     * store children links arranged by depth to apply breadth first search
+     * @var array
+     */
+    private $childrenByDepth;
+    
+    /**
      * Constructor
      * @param string $baseUrl base url to be crawled
      * @param int    $maxDepth depth of links to be crawled
@@ -125,10 +131,23 @@ class Crawler
             'visited' => false,
             'external_link' => false,
             'original_urls' => array($url),
-            'source_link'   => "",
+            'source_link'   => "",            
         );        
+        $this->traverseSingle($url, 0);
 
-        $this->traverseSingle($url, 1);
+        for($depth=1; $depth<$this->maxDepth; $depth++){            
+            if(!isset($this->childrenByDepth[$depth])){
+                $this->log(LogLevel::INFO, "skipping level#".$depth." no items found");
+                continue;
+            }
+            
+            foreach($this->childrenByDepth[$depth] as $parentLink => $urls){
+                foreach($urls as $url){
+                    $this->traverseSingle($url, $depth);
+                }
+            }
+            
+        }
         
         return $this;
     }
@@ -180,18 +199,21 @@ class Crawler
         }
         
         try {
-            $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=> $depth    ]);
+            $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=> $depth]);
             $client = $this->getScrapClient();
             $crawler = $client->request('GET', $url);
             $statusCode = $client->getResponse()->getStatus();
-            
+                        
             if ($url == $this->baseUrl) {
                 $hash = $url;
             } else {
                 $hash = $this->getPathFromUrl($url, $this->baseUrl);
             }
             $this->links[$hash]['status_code'] = $statusCode;
-            $this->links[$hash]['depth'] = $depth;
+            if(!isset($this->links[$hash]['depth'])){ //if already exist in previous depth, don't override
+                $this->links[$hash]['depth'] = $depth;
+            }
+            
             if ($statusCode === 200) {
                 $content_type = $client->getResponse()->getHeader('Content-Type');
 
@@ -203,13 +225,12 @@ class Crawler
                     if (isset($this->links[$hash]['external_link']) === true
                             && $this->links[$hash]['external_link'] === false) {
                         $childLinks = $this->extractLinksInfo($crawler, $hash);
-                    }
-
-                    $this->links[$hash]['visited'] = true;
-                    $this->traverseChildren($hash, $childLinks, $depth);
+                    }                    
+                    $this->links[$hash]['visited'] = true;    
+                    $this->traverseChildren($hash, $childLinks, $depth+1);
                 }
             }
-        } catch (CurlException $e) {
+        } catch (CurlException $e) {             
             if ($filterLinks && $filterLinks($url) === false) {
                 $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
             } else {
@@ -218,7 +239,7 @@ class Crawler
                 $this->links[$url]['error_message'] = $e->getMessage();
                 $this->log(LogLevel::ERROR, $url.' broken link detected code='.$e->getCode());
             }
-        } catch (ClientException $e) {
+        } catch (ClientException $e) {            
             if ($filterLinks && $filterLinks($url) === false) {
                 $this->log(LogLevel::INFO, $url.' skipping storing broken link not matching filter criteria');
             } else {
@@ -230,7 +251,7 @@ class Crawler
         } catch (\Exception $e) {
             if ($filterLinks && $filterLinks($url) === false) {
                 $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
-            } else {
+            } else {                
                 $this->links[$url]['status_code'] = '404';
                 $this->links[$url]['error_code'] = $e->getCode();
                 $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
@@ -286,12 +307,13 @@ class Crawler
      * @param int   $depth
      */
     public function traverseChildren($sourceUrl, $childLinks, $depth)
-    {
-        foreach ($childLinks as $url => $info) {
+    {                
+        foreach ($childLinks as $url => $info) {            
+            
             $filterCallback = $this->filterCallback;
             $hash = $this->getPathFromUrl($url, $sourceUrl);
             
-            if (isset($this->links[$hash]['dont_visit']) &&
+            if ( isset($this->links[$hash]['dont_visit']) &&
                     $this->links[$hash]['dont_visit']===true) {
                 return;
             }
@@ -322,18 +344,17 @@ class Crawler
                             ? $this->links[$hash]['frequency'] + $oldFrequency
                             : 1;
                 }
-            }
+                }
 
             if (isset($this->links[$hash]['visited']) === false) {
                 $this->links[$hash]['visited'] = false;
             }
 
-            if (empty($url) === false && $this->links[$hash]['visited'] === false &&
-                    isset($this->links[$hash]['dont_visit']) === false) {
-                $normalizedUrl = $this->normalizeLink($childLinks[$url]['absolute_url']);
-                $this->traverseSingle($normalizedUrl, $depth+1);
-            }
+            $this->childrenByDepth[$depth][$sourceUrl][] = $url;                        
         }
+        
+        
+        
     }
 
     /**
@@ -566,7 +587,7 @@ class Crawler
      */
     protected function getAbsoluteUrl($nodeUrl, $parentUrl = null)
     {
-
+        
         $urlParts = parse_url($this->baseUrl);
         
         if (strpos($nodeUrl, 'http://')===0 || strpos($nodeUrl, 'https://')===0) {
@@ -585,9 +606,13 @@ class Crawler
                 $ret = $this->baseUrl.$nodeUrl;
             }
         } elseif ($this->localFile===true) {
-            $ret = dirname($parentUrl).'/'.$nodeUrl;
+            if(strpos($nodeUrl,$parentUrl)===false && empty($parentUrl) === false){
+                $ret = dirname($parentUrl).'/'.$nodeUrl;
+            }else{
+                $ret = $nodeUrl;
+            }
         }
-
+        
         return $ret;
     }
 

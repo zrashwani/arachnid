@@ -19,23 +19,25 @@ class FilesystemClient extends Client
      */
     protected function doRequest($request)
     {
-
-        $file = $this->getFilePath($request->getUri());
         
-        if (!file_exists($file)) {
+        $file = $this->getFilePath($request->getUri());
+        $schema = parse_url($file,PHP_URL_SCHEME);
+        
+        if (!file_exists($file) && empty($schema) === true) {
             return new Response('Page not found', 404, []);
         }
 
         $content = file_get_contents($file);
-
+        $this->history->clear(); //empty history of browsing when using filesystem clients
+        
         return new Response($content, 200, [
             'Content-Type' => 'text/html',
             ]);
     }
 
     private function getFilePath($uri)
-    {
-        // convert an uri to a file path to your saved response
+    {        
+        // convert an uri to a file path to your saved response        
         // could be something like this:
         return preg_replace('@http://localhost@', '', $uri);
     }
