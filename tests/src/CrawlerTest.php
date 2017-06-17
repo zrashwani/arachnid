@@ -86,7 +86,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
     public function testScrapperClient3Level()
     {
         $filePath = __DIR__.'/../data/index.html';
-        $crawler = new Crawler($filePath, 5, ['localFile'=>true]);
+        $crawler = new Crawler($filePath, 6, ['localFile'=>true]);
                 
         $logger = new Logger('crawling logger');
         $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
@@ -99,12 +99,12 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $this->greaterThan(8, count($links));
         
         $this->assertArrayHasKey('http://facebook.com', $links);
-        $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level2-3.html', $links);
+        $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level2-3.html', $links);                
         
         $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level2-3.html']['status_code']);
-        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level1-3.html']['status_code']);
-        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level1-4.html']['status_code']);
-        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level1-5.html']['status_code']);
+        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level3-1.html']['status_code']);
+        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level4-1.html']['status_code']);        
+        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level5-1.html']['status_code']);
     }
 
         /**
@@ -295,7 +295,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $logger2 = new Logger('crawler logger');
         $logger2->pushHandler($testHandler);
         
-        $filePath = __DIR__.'/../data/sub_dir/index.html';
+        $filePath = __DIR__.'/../data/index.html';
         $crawler2 = new Crawler($filePath, 2, ['localFile'=>true]);
         $crawler2
                 ->setLogger($logger2)
@@ -366,6 +366,18 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         //ignoring already traversed links in previous levels
         $this->assertEquals(6, $depth2Links->count()); 
     }
+    
+    public function testGroupLinksByDepth(){
+        $filePath = __DIR__.'/../data/index.html';
+        $crawler = new Crawler($filePath, 6, ['localFile'=>true]);
+        $crawler->traverse();
+        $links = $crawler->getLinks();
+        
+        $collection = new LinksCollection($links);        
+        $linksByDepth = $collection->groupLinksByDepth();
+        
+        $this->assertArrayHasKey(5, $linksByDepth);
+    }
         
         /**
          * test setting guzzle options
@@ -428,5 +440,31 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
                 200
             )
         );
+    }
+    
+    public function testGroupLinksGroupedBySource(){
+        $filePath = __DIR__.'/../data/index.html';
+        $crawler = new Crawler($filePath, 3, ['localFile'=>true]);
+        $crawler->traverse();
+        $links = $crawler->getLinks();
+        
+        $collection = new LinksCollection($links);        
+        $linksBySource = $collection->groupLinksGroupedBySource();
+        
+        $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level3-1.html', $linksBySource);
+        $this->assertArrayHasKey(__DIR__.'/../data/level1-1.html', $linksBySource);
+        
+        $this->assertEquals(1,count($linksBySource[__DIR__.'/../data/sub_dir/level3-1.html']));
+        $this->assertEquals(2,count($linksBySource[__DIR__.'/../data/level1-1.html']));
+    }
+    
+    
+    public function testNonFoundUrl(){
+        $nonFoundUrl = 'http://non-existing-url.com';
+        $crawler = new Crawler($nonFoundUrl);
+        $links = $crawler->traverse()
+                ->getLinks();
+        
+        $this->assertEquals(404,$links[$nonFoundUrl]['status_code']);
     }
 }

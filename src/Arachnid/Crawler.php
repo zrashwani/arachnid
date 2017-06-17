@@ -181,9 +181,7 @@ class Crawler
      */
     protected function traverseSingle($url, $depth)
     {
-        if ($depth>$this->maxDepth) {
-            return;
-        }
+
         $hash = $this->getPathFromUrl($url);
         
         if (isset($this->links[$hash]['dont_visit']) &&

@@ -69,14 +69,12 @@ class LinksCollection extends Collection{
      * @return LinksCollection
      */
     public function groupLinksGroupedBySource(){
-        $final_items = [];
-        $this->each(function($link_info, $uri) use(&$final_items){
-            $final_items[$link_info['source_link']][$uri] = [
-                 'link'  => isset($link_info['absolute_url'])?$link_info['absolute_url']:null,
-                 'status_code' => isset($link_info['status_code'])?$link_info['status_code']:null,                
-            ];          
-        });
-                
-        return $this->make($final_items);
+        return $this->map(function($link_info){
+                        return 
+                            ['link' => isset($link_info['absolute_url'])?$link_info['absolute_url']:null,
+                             'source_link' => $link_info['source_link']];                                
+                    })
+                    ->unique('link')
+                    ->groupBy('source_link');        
     }
 }
