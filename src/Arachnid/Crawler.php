@@ -199,7 +199,7 @@ class Crawler
         try {
             $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=> $depth]);
             $client = $this->getScrapClient();
-            $crawler = $client->request('GET', $url);
+            $crawler = $client->request('GET', $this->getAbsoluteUrl($url), [],[],[],null,false); //disable change history
             $statusCode = $client->getResponse()->getStatus();
                         
             if ($url == $this->baseUrl) {
