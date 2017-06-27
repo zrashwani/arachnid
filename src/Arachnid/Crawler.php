@@ -4,7 +4,6 @@ namespace Arachnid;
 
 use Goutte\Client as GoutteClient;
 use Symfony\Component\BrowserKit\Client as ScrapClient;
-use Guzzle\Http\Exception\CurlException;
 use GuzzleHttp\Exception\ClientException;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 use Psr\Log\LogLevel;
@@ -228,15 +227,6 @@ class Crawler
                     $this->traverseChildren($hash, $childLinks, $depth+1);
                 }
             }
-        } catch (CurlException $e) {             
-            if ($filterLinks && $filterLinks($url) === false) {
-                $this->log(LogLevel::INFO, $url.' skipping broken link not matching filter criteria');
-            } else {
-                $this->links[$url]['status_code'] = '404';
-                $this->links[$url]['error_code'] = $e->getCode();
-                $this->links[$url]['error_message'] = $e->getMessage();
-                $this->log(LogLevel::ERROR, $url.' broken link detected code='.$e->getCode());
-            }
         } catch (ClientException $e) {            
             if ($filterLinks && $filterLinks($url) === false) {
                 $this->log(LogLevel::INFO, $url.' skipping storing broken link not matching filter criteria');
@@ -252,7 +242,7 @@ class Crawler
             } else {                
                 $this->links[$url]['status_code'] = '404';
                 $this->links[$url]['error_code'] = $e->getCode();
-                $this->links[$url]['error_message'] = $e->getMessage().' in line '.$e->getLine();
+                $this->links[$url]['error_message'] = $e->getMessage();
                 $this->log(LogLevel::ERROR, $url.' broken link detected code='.$e->getCode());
             }
         }
@@ -411,10 +401,6 @@ class Crawler
             }
         });
 
-        // Avoid cyclic loops with pages that link to themselves
-        if (isset($childLinks[$url]) === true) {
-            $childLinks[$url]['visited'] = true;
-        }
 
         return $childLinks;
     }
