@@ -119,8 +119,8 @@ class Crawler
      */
     public function traverse($url = null)
     {
-        if ($url === null) {
-            $url = $this->baseUrl;
+        if ($url === null) {            
+            $url = $this->removeDotsFromPath($this->baseUrl);
         }
         
         $this->links[$url] = array(
@@ -141,8 +141,8 @@ class Crawler
             }
             
             foreach($this->childrenByDepth[$depth] as $parentLink => $urls){
-                foreach($urls as $url){
-                    $this->traverseSingle($url, $depth);
+                foreach($urls as $url){                                        
+                    $this->traverseSingle($url, $depth, $parentLink);
                 }
             }
             
@@ -178,9 +178,9 @@ class Crawler
      * @param string $url
      * @param int    $depth
      */
-    protected function traverseSingle($url, $depth)
+    protected function traverseSingle($url, $depth, $parentUrl = '')
     {
-
+        
         $hash = $this->getPathFromUrl($url);
         
         if (isset($this->links[$hash]['dont_visit']) &&
@@ -197,15 +197,19 @@ class Crawler
         
         try {
             $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=> $depth]);
-            $client = $this->getScrapClient();
+            $client = $this->getScrapClient();            
             $crawler = $client->request('GET', $this->getAbsoluteUrl($url), [],[],[],null,false); //disable change history
             $statusCode = $client->getResponse()->getStatus();
-                        
-            if ($url == $this->baseUrl) {
+
+            if(empty($parentUrl)){
+                $parentUrl = $this->baseUrl;
+            }
+            
+            if ($url == $parentUrl) {
                 $hash = $url;
             } else {
-                $hash = $this->getPathFromUrl($url, $this->baseUrl);
-            }
+                $hash = $this->getPathFromUrl($url, $parentUrl);
+            }            
             $this->links[$hash]['status_code'] = $statusCode;
             if(!isset($this->links[$hash]['depth'])){ //if already exist in previous depth, don't override
                 $this->links[$hash]['depth'] = $depth;
@@ -337,8 +341,8 @@ class Crawler
             if (isset($this->links[$hash]['visited']) === false) {
                 $this->links[$hash]['visited'] = false;
             }
-
-            $this->childrenByDepth[$depth][$sourceUrl][] = $url;                        
+            
+            $this->childrenByDepth[$depth][$sourceUrl][] = $hash;                        
         }
         
         
@@ -526,7 +530,7 @@ class Crawler
      * @return string
      */
     protected function getPathFromUrl($url, $sourceUrl = null)
-    {
+    {                
         if (is_null($sourceUrl)===true) {
             $sourceUrl = $this->baseUrl;
         }
@@ -560,7 +564,30 @@ class Crawler
                 $ret = $url;
             }
         }
+        $ret = $this->removeDotsFromPath($ret);
+        
         return $ret;
+    }
+    
+    /**
+     * remove dots from url
+     * @param string $url
+     * @return string
+     */
+    protected function removeDotsFromPath($url){
+        
+        if(strpos($url,'/../')!==false){            
+            $parts = explode('/',$url);            
+            while($k = array_search('..',$parts)){ //handle ".." in links
+                unset($parts[$k-1]);
+                unset($parts[$k]);
+                $parts = array_values($parts);
+            }
+            
+            $url = implode('/', $parts);
+        }       
+        
+        return $url;
     }
 
     /**
@@ -597,16 +624,7 @@ class Crawler
             }
         }
         
-        if(strpos($ret,'/../')!==false){            
-            $parts = explode('/',$ret);            
-            while($k = array_search('..',$parts)){ //handle ".." in links
-                unset($parts[$k-1]);
-                unset($parts[$k]);
-                $parts = array_values($parts);
-            }
-            
-            $ret = implode('/', $parts);
-        }
+        $ret = $this->removeDotsFromPath($ret);
         
         return $ret;
     }

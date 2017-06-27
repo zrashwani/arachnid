@@ -8,10 +8,9 @@ use Monolog\Handler\StreamHandler;
 class CrawlerTest extends \PHPUnit_Framework_TestCase
 {
    
-
-        /**
-         * test crawling remote file, ex. google.com
-         */
+    /**
+     * test crawling remote file, ex. google.com
+     */
     public function testRemoteFile()
     {
         $url = 'https://www.google.com/';
@@ -54,7 +53,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
     public function testScrapperClient1Level()
     {
-        $filePath = __DIR__.'/../data/index.html';
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        $filePath = $dirPathNoDots.'/data/index.html';
         $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
         $crawler->traverse();
         $links = $crawler->getLinks();
@@ -70,7 +70,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
     public function testScrapperClient2Level()
     {
-        $filePath = __DIR__.'/../data/index.html';
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        $filePath = $dirPathNoDots.'/data/index.html';
         $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
         $crawler->traverse();
 
@@ -85,7 +86,9 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
      */
     public function testScrapperClient3Level()
     {
-        $filePath = __DIR__.'/../data/index.html';
+        $dirPathNoDots = $this->getHtmlBaseDir();            
+        $filePath = $dirPathNoDots.'/data/index.html';
+        
         $crawler = new Crawler($filePath, 6, ['localFile'=>true]);
                 
         $logger = new Logger('crawling logger');
@@ -99,12 +102,12 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $this->greaterThan(8, count($links));
         
         $this->assertArrayHasKey('http://facebook.com', $links);
-        $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level2-3.html', $links);                
+        $this->assertArrayHasKey($dirPathNoDots.'/data/sub_dir/level2-3.html', $links);                
         
-        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level2-3.html']['status_code']);
-        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level3-1.html']['status_code']);
-        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level4-1.html']['status_code']);        
-        $this->assertEquals(200, $links[__DIR__.'/../data/sub_dir/level5-1.html']['status_code']);
+        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level2-3.html']['status_code']);
+        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level3-1.html']['status_code']);
+        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level4-1.html']['status_code']);        
+        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level5-1.html']['status_code']);
     }
 
         /**
@@ -112,7 +115,9 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
     public function testBrokenLink()
     {
-        $filePath = __DIR__.'/../data/sub_dir/level1-3.html2';
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        
+        $filePath = $dirPathNoDots.'/data/sub_dir/level1-3.html2';
         $crawler = new Crawler($filePath, 2, ['localFile'=>true]);
         $crawler->traverse();
 
@@ -265,17 +270,22 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
     public function getPathFromUrlProvider()
     {
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        
         return [
         ['http://example.com', '/ar/testing', '/ar/testing', false],
         ['http://example.com/ar/', '/ar/testing', '/ar/testing', false],
         ['http://example.com/ar/', 'testing', '/ar/testing', false],
         ['http://example.com', 'testing', '/testing', false],
+        ['http://example.com', '/evil/../index.html', '/index.html', false],
+        ['http://example.com', '/evil/evil2/../index.html', '/evil/index.html', false],
+        ['http://example.com', '/evil/evil2/../../index.html', '/index.html', false],
         ['http://example.com/', 'http://example.com/testing', '/testing', false],
         ['http://example.com/', 'mailto: zrashwani@gmail.com', 'mailto: zrashwani@gmail.com', false],
         ['http://example.com', 'https://www.pinterest.com/OrbexFX/', 'https://www.pinterest.com/OrbexFX/', false],
-        [__DIR__.'/../data/index.html', '/index.html', __DIR__.'/../data/index.html', true],
-        [__DIR__.'/../data/index.html', '/index2.html', __DIR__.'/../data/index2.html', true],
-        [__DIR__.'/../data/index.html', 'sub', __DIR__.'/../data/sub', true],
+        [__DIR__.'/../data/index.html', '/index.html', $dirPathNoDots.'/data/index.html', true],
+        [__DIR__.'/../data/index.html', '/index2.html', $dirPathNoDots.'/data/index2.html', true],
+        [__DIR__.'/../data/index.html', 'sub', $dirPathNoDots.'/data/sub', true],
         ];
     }
  
@@ -305,7 +315,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $logger2 = new Logger('crawler logger');
         $logger2->pushHandler($testHandler);
         
-        $filePath = __DIR__.'/../data/index.html';
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        $filePath = $dirPathNoDots.'/data/index.html';
         $crawler2 = new Crawler($filePath, 2, ['localFile'=>true]);
         $crawler2
                 ->setLogger($logger2)
@@ -327,8 +338,9 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
     {
         $logger = new Logger('crawler logger');
         $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
-            
-        $client = new Crawler(__DIR__.'/../data/filter1.html', 4);
+           
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        $client = new Crawler($dirPathNoDots.'/data/filter1.html', 4);
             
         $client->setLogger($logger)
            ->filterLinks(function ($link) {
@@ -347,7 +359,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
     public function testMetaInfo()
     {
-        $filePath = __DIR__.'/../data/index.html';
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        $filePath = $dirPathNoDots.'/data/index.html';
         $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
         $crawler->traverse();
         $links = $crawler->getLinks();
@@ -363,7 +376,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
      */
     public function testFilterByDepth()
     {
-        $filePath = __DIR__.'/../data/index.html';
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        $filePath = $dirPathNoDots.'/data/index.html';
         $crawler = new Crawler($filePath, 3, ['localFile'=>true]);
         $crawler->traverse();
         $links = $crawler->getLinks();
@@ -378,7 +392,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
     }
     
     public function testGroupLinksByDepth(){
-        $filePath = __DIR__.'/../data/index.html';
+        $dirPathNoDots = $this->getHtmlBaseDir();
+        $filePath = $dirPathNoDots.'/data/index.html';
         $crawler = new Crawler($filePath, 6, ['localFile'=>true]);
         $crawler->traverse();
         $links = $crawler->getLinks();
@@ -430,12 +445,14 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $testHandler = new \Monolog\Handler\TestHandler();
         $logger = new Logger('test logger');
         $logger->pushHandler($testHandler);
-                
-        $filePath = __DIR__.'/../data/index.html';
+        
+        $dirPathNoDots = $this->getHtmlBaseDir();  
+        $filePath = $dirPathNoDots.'/data/index.html';
+        
         $crawler = new Crawler($filePath, 2, ['localFile'=>true]);
         $crawler->setLogger($logger);
         $crawler->traverse();
-                
+        
                 
         $this->assertFalse(
             $testHandler->hasRecordThatMatches(
@@ -453,18 +470,16 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
     }
     
     public function testGroupLinksGroupedBySource(){
-        $filePath = __DIR__.'/../data/index.html';
+        
+        $dirPathNoDots = $this->getHtmlBaseDir();        
+        $filePath = $dirPathNoDots.'/data/index.html';
+        
         $crawler = new Crawler($filePath, 3, ['localFile'=>true]);
         $crawler->traverse();
         $links = $crawler->getLinks();
         
         $collection = new LinksCollection($links);        
         $linksBySource = $collection->groupLinksGroupedBySource();
-
-
-        $parts = explode('/',__DIR__);
-        unset($parts[count($parts)-1]);
-        $dirPathNoDots = implode('/',$parts);
         
         $this->assertArrayHasKey($dirPathNoDots.'/data/sub_dir/level3-1.html', $linksBySource);
         $this->assertArrayHasKey($dirPathNoDots.'/data/level1-1.html', $linksBySource);
@@ -472,7 +487,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(1,count($linksBySource[$dirPathNoDots.'/data/sub_dir/level3-1.html']));
         $this->assertEquals(2,count($linksBySource[$dirPathNoDots.'/data/level1-1.html']));
     }
-    
+
     
     public function testNonFoundUrl(){
         $nonFoundUrl = 'http://non-existing-url.com';
@@ -482,5 +497,14 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         
         $this->assertEquals(404,$links[$nonFoundUrl]['status_code']);
     }
-    
+
+    /**
+     * getting base directory of html files
+     * @return string
+     */
+    protected function getHtmlBaseDir(){        
+        $parts = explode('/',__DIR__);
+        unset($parts[count($parts)-1]);
+        return implode('/',$parts);        
+    }    
 }
