@@ -77,4 +77,14 @@ class LinksCollection extends Collection{
                     ->unique('link')
                     ->groupBy('source_link');        
     }
+    
+    /**
+     * getting external links found in collection
+     * @return LinksCollection
+     */
+    public function getExternalLinks(){
+        return $this->filter(function($link_info){
+            return isset($link_info['external_link'])===true && $link_info['external_link']===true;
+        });
+    }
 }

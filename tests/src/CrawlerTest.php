@@ -467,4 +467,5 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         
         $this->assertEquals(404,$links[$nonFoundUrl]['status_code']);
     }
+    
 }
