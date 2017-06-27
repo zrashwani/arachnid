@@ -199,6 +199,16 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
                 'http://facebook.com',
                                  true //local file
             ],
+            [
+                'http://toastytech.com/evil/',
+                '../links/index.html',
+                'http://toastytech.com/links/index.html',
+            ],
+            [
+                'http://toastytech.com/evil/evil2/',
+                '../../links/index.html',
+                'http://toastytech.com/links/index.html',
+            ],
         ];
     }
         
@@ -450,12 +460,17 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         
         $collection = new LinksCollection($links);        
         $linksBySource = $collection->groupLinksGroupedBySource();
+
+
+        $parts = explode('/',__DIR__);
+        unset($parts[count($parts)-1]);
+        $dirPathNoDots = implode('/',$parts);
         
-        $this->assertArrayHasKey(__DIR__.'/../data/sub_dir/level3-1.html', $linksBySource);
-        $this->assertArrayHasKey(__DIR__.'/../data/level1-1.html', $linksBySource);
+        $this->assertArrayHasKey($dirPathNoDots.'/data/sub_dir/level3-1.html', $linksBySource);
+        $this->assertArrayHasKey($dirPathNoDots.'/data/level1-1.html', $linksBySource);
         
-        $this->assertEquals(1,count($linksBySource[__DIR__.'/../data/sub_dir/level3-1.html']));
-        $this->assertEquals(2,count($linksBySource[__DIR__.'/../data/level1-1.html']));
+        $this->assertEquals(1,count($linksBySource[$dirPathNoDots.'/data/sub_dir/level3-1.html']));
+        $this->assertEquals(2,count($linksBySource[$dirPathNoDots.'/data/level1-1.html']));
     }
     
     

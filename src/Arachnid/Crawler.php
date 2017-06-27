@@ -597,6 +597,17 @@ class Crawler
             }
         }
         
+        if(strpos($ret,'/../')!==false){            
+            $parts = explode('/',$ret);            
+            while($k = array_search('..',$parts)){ //handle ".." in links
+                unset($parts[$k-1]);
+                unset($parts[$k]);
+                $parts = array_values($parts);
+            }
+            
+            $ret = implode('/', $parts);
+        }
+        
         return $ret;
     }
 
