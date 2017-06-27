@@ -32,18 +32,24 @@ class LinksCollection extends Collection{
     
     /**
      * getting broken links
+     * @param bool $showSummaryInfo if set to true, it will return only status_code and source page
      * @return LinksCollection
      */
-    public function getBrokenLinks(){
-        return $this->filter(function($link){
+    public function getBrokenLinks($showSummaryInfo = false){
+        $brokenLinks = $this->filter(function($link){
             return isset($link['status_code']) && $link['status_code'] !== 200;
-        })->map(function($link){
+        });
+        
+        return $showSummaryInfo==false? //retrieve summary or details of links
+                $brokenLinks:
+                $brokenLinks->map(function($link){
             return [
                 'source_page' => $link['source_link'],
                 'link' => $link['absolute_url'],
                 'status_code' => $link['status_code'],
             ];
         });
+        
     }
     
     /**

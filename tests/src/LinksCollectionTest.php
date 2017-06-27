@@ -8,10 +8,32 @@ use Monolog\Handler\StreamHandler;
 class LinksCollectionTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * test macros
+     * test detecting external links
      */
     public function testExternalLinks(){
-        $items = [
+        
+        $collection = new LinksCollection($this->getSampleLinks());
+        
+        $externalLinks = $collection->getExternalLinks();
+        $this->assertGreaterThanOrEqual(1, $externalLinks->count());
+    }
+    
+    /**
+     * test detecting broken links, both summary and detailed info
+     */
+    public function testBrokenLinks(){
+        $collection = new LinksCollection($this->getSampleLinks());
+        $brokenLinksDetailed = $collection->getBrokenLinks();
+        
+        $this->assertArrayHasKey('/broken-link', $brokenLinksDetailed);
+        $this->assertArrayHasKey('links_text', $brokenLinksDetailed['/broken-link']);
+        
+        $brokenLinksSummary = $collection->getBrokenLinks(true);
+        $this->assertArrayNotHasKey('links_text', $brokenLinksSummary['/broken-link']);
+    }
+    
+    protected function getSampleLinks(){
+        return [
             '/test' => [
                 "original_urls" => [],
                 "links_text" => [],
@@ -30,12 +52,18 @@ class LinksCollectionTest extends \PHPUnit_Framework_TestCase
                 ],
                 'http://external-link.com' => [
                     'external_link' => true,
+                    'links_text' => ['external-link'],
+                    'depth' => 2,
+                    'source_link' => '/test',
+                    'absolute_url' => 'http://external-link.com',
                 ],            
-        ];
-        
-        $collection = new LinksCollection($items);
-        
-        $externalLinks = $collection->getExternalLinks();
-        $this->assertGreaterThanOrEqual(1, $externalLinks->count());
+                '/broken-link' => [
+                    'status_code' => 404,
+                    'links_text' => ['dead link'],
+                    'depth' => 2,
+                    'source_link' => '/test',
+                    'absolute_url' => 'http://test.com/broken-link',
+                ]
+        ];        
     }
 }
