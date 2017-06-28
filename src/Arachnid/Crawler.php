@@ -142,9 +142,9 @@ class Crawler
             
             foreach($this->childrenByDepth[$depth] as $parentLink => $urls){
                 foreach($urls as $url){                                        
-                    $this->traverseSingle($url, $depth, $parentLink);
+                        $this->traverseSingle($url, $depth, $parentLink);
+                    }
                 }
-            }
             
         }
         
@@ -199,7 +199,9 @@ class Crawler
             $this->log(LogLevel::INFO, 'crawling '.$url. ' in process', ['depth'=> $depth]);
             $client = $this->getScrapClient();            
             $crawler = $client->request('GET', $this->getAbsoluteUrl($url), [],[],[],null,false); //disable change history
-            $statusCode = $client->getResponse()->getStatus();
+            /*@var $response \Symfony\Component\BrowserKit\Response */
+            $response = $client->getResponse();
+            $statusCode = $response->getStatus();
 
             if(empty($parentUrl)){
                 $parentUrl = $this->baseUrl;
@@ -216,7 +218,7 @@ class Crawler
             }
             
             if ($statusCode === 200) {
-                $content_type = $client->getResponse()->getHeader('Content-Type');
+                $content_type = $response->getHeader('Content-Type');
 
                 //traverse children in case the response in HTML document only
                 if (strpos($content_type, 'text/html') !== false) {
@@ -230,6 +232,8 @@ class Crawler
                     $this->links[$hash]['visited'] = true;    
                     $this->traverseChildren($hash, $childLinks, $depth+1);
                 }
+            }else{
+                $this->links[$hash]['error_message'] = $statusCode;
             }
         } catch (ClientException $e) {            
             if ($filterLinks && $filterLinks($url) === false) {
@@ -558,7 +562,13 @@ class Crawler
             } elseif (strpos($url, 'http://')===0 || strpos($url, 'https://')===0) { //different domain name
                 $ret = $url;
             } elseif (strpos($url, '/')!==0) {
-                $path = rtrim(parse_url($sourceUrl, PHP_URL_PATH), '/');
+                $urlPath = parse_url($sourceUrl, PHP_URL_PATH);
+                $extension = pathinfo($urlPath, PATHINFO_EXTENSION);                
+                if(empty($extension) === false){
+                    $baseName = pathinfo($urlPath, PATHINFO_BASENAME);
+                    $urlPath = str_replace($baseName,'',$urlPath);
+                }
+                $path = rtrim($urlPath, '/');
                 $ret = $path.'/'.$url;
             } else {
                 $ret = $url;

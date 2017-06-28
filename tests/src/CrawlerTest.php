@@ -283,6 +283,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         ['http://example.com/', 'http://example.com/testing', '/testing', false],
         ['http://example.com/', 'mailto: zrashwani@gmail.com', 'mailto: zrashwani@gmail.com', false],
         ['http://example.com', 'https://www.pinterest.com/OrbexFX/', 'https://www.pinterest.com/OrbexFX/', false],
+        ['http://example.com/index.html', 'index2.html', '/index2.html', false],
         [__DIR__.'/../data/index.html', '/index.html', $dirPathNoDots.'/data/index.html', true],
         [__DIR__.'/../data/index.html', '/index2.html', $dirPathNoDots.'/data/index2.html', true],
         [__DIR__.'/../data/index.html', 'sub', $dirPathNoDots.'/data/sub', true],
