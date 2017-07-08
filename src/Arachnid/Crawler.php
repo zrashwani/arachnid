@@ -134,17 +134,21 @@ class Crawler
         );        
         $this->traverseSingle($url, 0);
 
-        for($depth=1; $depth<$this->maxDepth; $depth++){            
+        for($depth=1; $depth<$this->maxDepth; $depth++){ 
+            $this->log(LogLevel::DEBUG, "crwaling in depth#".$depth);
             if(!isset($this->childrenByDepth[$depth])){
                 $this->log(LogLevel::INFO, "skipping level#".$depth." no items found");
                 continue;
             }
             
+            $count=1;
             foreach($this->childrenByDepth[$depth] as $parentLink => $urls){
-                foreach($urls as $url){                                        
+                $this->log(LogLevel::DEBUG, '('.$count."/".count($this->childrenByDepth[$depth]).") crawling links of ".$parentLink. ' count of links '.count($urls));
+                foreach($urls as $url){                                   
                         $this->traverseSingle($url, $depth, $parentLink);
-                    }
                 }
+                $count++;
+            }
             
         }
         
@@ -182,7 +186,7 @@ class Crawler
     {
         
         $hash = $this->getPathFromUrl($url);
-        
+
         if (isset($this->links[$hash]['dont_visit']) &&
                 $this->links[$hash]['dont_visit']===true) {
             return;
@@ -529,12 +533,13 @@ class Crawler
 
     /**
      * extrating the relative path from url string
-     * @param  string $url
+     * @param  string $urlRaw
      * @param  string $sourceUrl
      * @return string
      */
-    protected function getPathFromUrl($url, $sourceUrl = null)
+    protected function getPathFromUrl($urlRaw, $sourceUrl = null)
     {                
+        $url = trim($urlRaw);
         if (is_null($sourceUrl)===true) {
             $sourceUrl = $this->baseUrl;
         }
