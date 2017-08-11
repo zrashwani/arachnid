@@ -40,7 +40,7 @@ class LinksCollection extends Collection{
             return isset($link['status_code']) && $link['status_code'] !== 200;
         });
         
-        return $showSummaryInfo==false? //retrieve summary or details of links
+        return $showSummaryInfo===false? //retrieve summary or details of links
                 $brokenLinks:
                 $brokenLinks->map(function($link){
             return [
