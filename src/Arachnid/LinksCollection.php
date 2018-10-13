@@ -3,6 +3,7 @@
 namespace Arachnid;
 
 use Illuminate\Support\Collection;
+use Arachnid\Link;
 
 /**
  * LinksCollection
@@ -20,12 +21,12 @@ class LinksCollection extends Collection{
      * @return LinksCollection
      */
     public function filterByDepth($depth){
-        return $this->filter(function($link) use($depth){
-            return isset($link['depth']) && $link['depth'] == $depth;
-        })->map(function($link){
+        return $this->filter(function(Link $link) use($depth){
+            return $link->getMetaInfo('depth') == $depth;
+        })->map(function(Link $link){
             return [
-                'source_page' => $link['source_link'],
-                'link' => isset($link['absolute_url'])?$link['absolute_url']:null,
+                'source_page' => $link->getParentUrl(),
+                'link' => $link->getAbsoluteUrl(),
             ];
         });
     }
@@ -36,17 +37,17 @@ class LinksCollection extends Collection{
      * @return LinksCollection
      */
     public function getBrokenLinks($showSummaryInfo = false){
-        $brokenLinks = $this->filter(function($link){
-            return isset($link['status_code']) && $link['status_code'] !== 200;
+        $brokenLinks = $this->filter(function(Link $link){
+            return !($link->getStatusCode() >= 200 && $link->getStatusCode() <= 299);
         });
         
         return $showSummaryInfo===false? //retrieve summary or details of links
                 $brokenLinks:
-                $brokenLinks->map(function($link){
+                $brokenLinks->map(function(Link $link){
             return [
-                'source_page' => $link['source_link'],
-                'link' => $link['absolute_url'],
-                'status_code' => $link['status_code'],
+                'source_page' => $link->getParentUrl(),
+                'link' => $link->getAbsoluteUrl(),
+                'status_code' => $link->getStatusCode(),
             ];
         });
         
@@ -58,10 +59,10 @@ class LinksCollection extends Collection{
      */
     public function groupLinksByDepth(){
         $final_items = [];
-        $this->each(function($link_info, $uri) use(&$final_items){
-            $final_items[$link_info['depth']][$uri] = [
-               'link'  => isset($link_info['absolute_url'])?$link_info['absolute_url']:null,
-               'source_page' => $link_info['source_link'],
+        $this->each(function(Link $linkObj, $uri) use(&$final_items){
+            $final_items[$linkObj->getMetaInfo('depth')][$uri] = [
+               'link'  => $linkObj->getAbsoluteUrl(),
+               'source_page' => $linkObj->getParentUrl(),
             ];          
         });
         
@@ -75,10 +76,10 @@ class LinksCollection extends Collection{
      * @return LinksCollection
      */
     public function groupLinksGroupedBySource(){
-        return $this->map(function($link_info){
+        return $this->map(function(Link $linkObj){
                         return 
-                            ['link' => isset($link_info['absolute_url'])?$link_info['absolute_url']:null,
-                             'source_link' => $link_info['source_link']];                                
+                            ['link' => $linkObj->getAbsoluteUrl(),
+                             'source_link' => $linkObj->getParentUrl()];                                
                     })
                     ->unique('link')
                     ->groupBy('source_link');        
@@ -89,8 +90,8 @@ class LinksCollection extends Collection{
      * @return LinksCollection
      */
     public function getExternalLinks(){
-        return $this->filter(function($link_info){
-            return isset($link_info['external_link'])===true && $link_info['external_link']===true;
+        return $this->filter(function(Link $linkObj){
+            return $linkObj->isExternal();
         });
     }
 }
