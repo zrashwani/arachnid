@@ -153,7 +153,7 @@ class Crawler
         } else {
             $links = array_filter($this->links, function ($linkObj) {
                 /*@var $linkObj Link */
-                return $linkObj->shouldNotVisit();
+                return $linkObj->shouldNotVisit() == false;
             });
         }
         
@@ -174,14 +174,14 @@ class Crawler
             return;
         }        
         if($linkObj->isCrawlable()==false){
-            $linkObj->shouldNotVisit();
+            $linkObj->setAsShouldVisit(false);
             $this->log(LogLevel::INFO, 'skipping "'.$hash.'" not crawlable link', ['depth'=>$depth]);
             return;
         }
         
         $filterLinks = $this->filterCallback;
         if ($filterLinks !== null && $filterLinks($linkObj) === false) {
-                $linkObj->shouldNotVisit();
+                $linkObj->setAsShouldVisit(false);
                 $this->log(LogLevel::INFO, 'skipping "'.$hash.'" url not matching filter criteria', ['depth'=>$depth]);
                 return;
         }
@@ -219,16 +219,16 @@ class Crawler
                 $this->log(LogLevel::INFO, $hash.' skipping storing broken link not matching filter criteria');
             } else {                
                 $linkObj->setStatusCode($e->getResponse()->getStatusCode());
-                $linkObj->setErrorInfo($e->getResponse()->getStatusCode().' '.$e->getMessage().' '.$e->getFile());
-                $this->log(LogLevel::ERROR, $hash.' broken link detected code='.$e->getResponse()->getStatusCode().' in line '.__LINE__);
+                $linkObj->setErrorInfo($e->getResponse()->getStatusCode());
+                $this->log(LogLevel::ERROR, $hash.' broken link detected code='.$e->getResponse()->getStatusCode());
             }
         } catch (\Exception $e) {                        
             if ($filterLinks && $filterLinks($linkObj) === false) {
                 $this->log(LogLevel::INFO, $linkObj.' skipping broken link not matching filter criteria');
             } else {                
-                $linkObj->setStatusCode(500); //TODO replace
-                $linkObj->setErrorInfo($e->getMessage().' in line '.$e->getLine().' '.$e->getFile());
-                $this->log(LogLevel::ERROR, $hash.' broken link detected code='.$e->getCode().' in line '.__LINE__.' '.__FILE__);
+                $linkObj->setStatusCode(500);
+                $linkObj->setErrorInfo($e->getMessage());
+                $this->log(LogLevel::ERROR, $hash.' broken link detected code='.$e->getCode());
             }
         }
     }

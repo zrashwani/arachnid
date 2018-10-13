@@ -1,11 +1,9 @@
 <?php
 
 namespace Arachnid;
+use PHPUnit\Framework\TestCase;
 
-use Monolog\Logger;
-use Monolog\Handler\StreamHandler;
-
-class LinksCollectionTest extends \PHPUnit_Framework_TestCase
+class LinksCollectionTest extends TestCase
 {
     /**
      * test detecting external links
@@ -23,47 +21,33 @@ class LinksCollectionTest extends \PHPUnit_Framework_TestCase
      */
     public function testBrokenLinks(){
         $collection = new LinksCollection($this->getSampleLinks());
-        $brokenLinksDetailed = $collection->getBrokenLinks();
+        $brokenLinksDetailed = $collection->getBrokenLinks()->toArray();        
         
         $this->assertArrayHasKey('/broken-link', $brokenLinksDetailed);
-        $this->assertArrayHasKey('links_text', $brokenLinksDetailed['/broken-link']);
+        $this->assertArraySubset(['dead link'], $brokenLinksDetailed['/broken-link']->getMetaInfo('links_code'));
         
         $brokenLinksSummary = $collection->getBrokenLinks(true);
         $this->assertArrayNotHasKey('links_text', $brokenLinksSummary['/broken-link']);
     }
     
     protected function getSampleLinks(){
-        return [
-            '/test' => [
-                "original_urls" => [],
-                "links_text" => [],
-                "absolute_url" => "http://test.com/index.html",
-                "external_link" => false,
-                "visited" => true,
-                "frequency" => 1,
-                "source_link" => "http://test.com/",
-                "depth" => 1,
-                "status_code" => 200,
-                "title" => "Test Link",
-                "meta_keywords" => "",
-                "meta_description" => "",
-                "h1_count" => 1,
-                "h1_contents" => ['test'],
-                ],
-                'http://external-link.com' => [
-                    'external_link' => true,
-                    'links_text' => ['external-link'],
-                    'depth' => 2,
-                    'source_link' => '/test',
-                    'absolute_url' => 'http://external-link.com',
-                ],            
-                '/broken-link' => [
-                    'status_code' => 404,
-                    'links_text' => ['dead link'],
-                    'depth' => 2,
-                    'source_link' => '/test',
-                    'absolute_url' => 'http://test.com/broken-link',
-                ]
-        ];        
+        $links = array();
+        $links['/test'] = (new Link('/test',new Link('http://test.com/')))
+                           ->setAsVisited()
+                           ->setStatusCode(200)
+                           ->addMetaInfo('title', 'Test Link')
+                           ->addMetaInfo('h1_count', 1)
+                           ->addMetaInfo('h1_contents', ['test']);
+        $links['http://external-link.com'] = 
+                (new Link('http://external-link2.com', new Link('http://external-link.com')))
+                ->setMetaInfo('depth', 2)
+                ->addMetaInfo('links_text', ['external-link'])
+                ;
+        $links['/broken-link'] = (new Link('/broken-link',new Link('http://test.com/test')))
+                               ->setStatusCode(404)
+                               ->setMetaInfo('depth', 2)
+                               ->addMetaInfo('links_code', 'dead link')
+                ;
+        return $links;       
     }
 }

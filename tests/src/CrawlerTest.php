@@ -2,12 +2,30 @@
 
 namespace Arachnid;
 
+use Arachnid\Link;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
-class CrawlerTest extends \PHPUnit_Framework_TestCase
+use Symfony\Component\Panther\PantherTestCaseTrait;
+use Symfony\Component\Panther\Client as PantherClient;
+use PHPUnit\Framework\TestCase;
+
+class CrawlerTest extends TestCase
 {
-   
+    public static $baseTestUrl = 'http://127.0.0.1:9001';
+    
+    use PantherTestCaseTrait;
+    
+    protected function setUp() {  
+        self::startWebServer(__DIR__.'/../data', '127.0.0.1', 9001);
+        parent::setUp();
+    }
+    
+    protected function tearDown() {
+        static::stopWebServer();
+        parent::tearDown();
+    }
+    
     /**
      * test crawling remote file, ex. google.com
      */
@@ -19,50 +37,52 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $links = $crawler->getLinks();
         $this->assertEquals(get_class($crawler->getScrapClient()), \Goutte\Client::class);
 
-        $this->assertEquals($links['https://www.google.com/']['status_code'], 200, $url.' shall be 200 ok');
+        /*@var $link Link */
+        $mainLink = $links[$url];
+        $this->assertInstanceOf(Link::class, $mainLink);
+        $this->assertEquals($mainLink->getStatusCode(), 200, $url.' shall be 200 ok');
         $this->assertGreaterThan(3, count($links));
     }
         
-        /**
-         * test scrapping custom scrapper client
-         */
+    /**
+     * test scrapping chrome scrapping client
+     */
     public function testSetScrapClient()
     {
         $crawler = new Crawler('index', 1);
-        $crawler->setScrapClient(new Clients\FilesystemClient());
-            
-        $this->assertEquals(get_class($crawler->getScrapClient()), Clients\FilesystemClient::class);
+        $crawler->setScrapClient(PantherClient::createChromeClient());
+        $this->assertInstanceOf(PantherClient::class,$crawler->getScrapClient());
     }
 
-        /**
-         * test crawling non-existent page
-         */
+    /**
+     * test crawling non-existent page
+     */
     public function testFileNotExist()
     {
-        $crawler = new Crawler('test', 1, ['localFile'=>true]); //non existing url/path
+        $crawler = new Crawler(self::$baseTestUrl.'/test.html', 1); //non existing url/path
 
         $crawler->traverse();
-        $ret = $crawler->getLinks();
-                
-        $this->assertArrayHasKey('test', $ret);
-        $this->assertEquals($ret['test']['status_code'], 404);
+        $links = $crawler->getLinks();        
+        $this->assertArrayHasKey(self::$baseTestUrl.'/test.html', $links);
+        
+        $mainLink = $links[self::$baseTestUrl.'/test.html'];
+        $this->assertInstanceOf(Link::class, $mainLink,'entry must be instance of Link class');
+        $this->assertEquals($mainLink->getStatusCode(), 404,'status code must be 404, given: '.$mainLink->getStatusCode());
     }
 
-        /**
-         * test crawling one level pages
-         */
+    /**
+     * test crawling one level pages
+     */
     public function testScrapperClient1Level()
     {
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        $filePath = $dirPathNoDots.'/data/index.html';
-        $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
+        $filePath = self::$baseTestUrl.'/index.html';
+        $crawler = new Crawler($filePath, 1); //non existing url/path        
         $crawler->traverse();
+     
         $links = $crawler->getLinks();
-        
-        $this->assertEquals(get_class($crawler->getScrapClient()), Clients\FilesystemClient::class);
-        $this->assertEquals($links[$filePath]['status_code'], 200, $filePath.' shall be 200 ok');
-                
-        $this->assertEquals(8, count($links));
+     
+        $this->assertEquals($links[$filePath]->getStatusCode(), 200, $filePath.' shall be 200 ok');                
+        $this->assertEquals(7, count($links)); //7 after normalizing fragments
     }
 
         /**
@@ -70,15 +90,13 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
     public function testScrapperClient2Level()
     {
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        $filePath = $dirPathNoDots.'/data/index.html';
-        $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
+        $filePath = self::$baseTestUrl.'/index.html';
+        $crawler = new Crawler($filePath, 2); 
         $crawler->traverse();
-
         $links = $crawler->getLinks();
-
-        $this->assertEquals($links[$filePath]['status_code'], 200);
-        $this->assertCount(8, $links);
+        
+        $this->assertEquals($links[$filePath]->getStatusCode(), 200);
+        $this->assertCount(12, $links);
     }
 
     /**
@@ -86,10 +104,8 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
      */
     public function testScrapperClient3Level()
     {
-        $dirPathNoDots = $this->getHtmlBaseDir();            
-        $filePath = $dirPathNoDots.'/data/index.html';
-        
-        $crawler = new Crawler($filePath, 6, ['localFile'=>true]);
+        $filePath = self::$baseTestUrl.'/index.html';
+        $crawler = new Crawler($filePath, 6);
                 
         $logger = new Logger('crawling logger');
         $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
@@ -98,16 +114,16 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
 
         $links = $crawler->getLinks();
 
-        $this->assertEquals($links[$filePath]['status_code'], 200);
+        $this->assertEquals($links[$filePath]->getStatusCode(), 200);
         $this->greaterThan(8, count($links));
         
         $this->assertArrayHasKey('http://facebook.com', $links);
-        $this->assertArrayHasKey($dirPathNoDots.'/data/sub_dir/level2-3.html', $links);                
+        $this->assertArrayHasKey(self::$baseTestUrl.'/sub_dir/level2-3.html', $links);                
         
-        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level2-3.html']['status_code']);
-        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level3-1.html']['status_code']);
-        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level4-1.html']['status_code']);        
-        $this->assertEquals(200, $links[$dirPathNoDots.'/data/sub_dir/level5-1.html']['status_code']);
+        $this->assertEquals(200, $links[self::$baseTestUrl.'/sub_dir/level2-3.html']->getStatusCode());
+        $this->assertEquals(200, $links[self::$baseTestUrl.'/sub_dir/level3-1.html']->getStatusCode());
+        $this->assertEquals(200, $links[self::$baseTestUrl.'/sub_dir/level4-1.html']->getStatusCode());        
+        $this->assertEquals(200, $links[self::$baseTestUrl.'/sub_dir/level5-1.html']->getStatusCode());
     }
 
         /**
@@ -115,180 +131,17 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
          */
     public function testBrokenLink()
     {
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        
-        $filePath = $dirPathNoDots.'/data/sub_dir/level1-3.html2';
-        $crawler = new Crawler($filePath, 2, ['localFile'=>true]);
+        $filePath = self::$baseTestUrl.'/sub_dir/level1-3.html2';
+        $crawler = new Crawler($filePath, 2); //non existing url/path        
         $crawler->traverse();
 
-        $links = $crawler->getLinks();
-                
-        $this->assertEquals($links[$filePath]['status_code'], 404);
+        $links = $crawler->getLinks();                
+        $this->assertEquals($links[$filePath]->getStatusCode(), 404);
         
         $collection = new LinksCollection($links);
         $this->assertEquals($collection->getBrokenLinks()->count(),1);
     }
 
-    /**
-     * test get absolute url
-     * @dataProvider urlAbsoluteProvider
-     */
-    public function testGetAbsoluteUrl($baseUrl, $nodeUrl, $expectedUrl, $localFile = false)
-    {
-        $method = new \ReflectionMethod(
-            \Arachnid\Crawler::class,
-            'getAbsoluteUrl'
-        );
-        $method->setAccessible(true);
-                
-        $crawler = new Crawler($baseUrl, 1, ['localFile'=>$localFile]);
-                $retUrl = $method->invoke($crawler, $nodeUrl);
-        $this->assertEquals($retUrl, $expectedUrl);
-    }
-
-        /**
-         * provider data for absolute url method
-         * @return array
-         */
-    public function urlAbsoluteProvider()
-    {
-        return [
-            [
-                'http://example.com',
-                '/test',
-                'http://example.com/test'
-            ],
-            [
-                'http://example.com/',
-                '/test',
-                'http://example.com/test'
-            ],
-            [
-                'http://example.com/',
-                '/test/sub',
-                'http://example.com/test/sub'
-            ],
-            [
-                'http://example.com/',
-                'http://example2.com',
-                'http://example2.com'
-            ],
-            [
-                'http://example.com/',
-                '//example2.com',
-                'http://example2.com'
-            ],
-            [
-                'https://example.com/',
-                '//example2.com',
-                'https://example2.com'
-            ],
-            [
-                'https://example.com/',
-                '#title',
-                'https://example.com#title'
-            ],
-            [
-                'https://example.com/',
-                'test',
-                'https://example.com/test'
-            ],
-            [
-                'https://example.com/',
-                'javascript:void(0);',
-                'javascript:void(0);'
-            ],
-            [
-                __DIR__.'/../data/index.html',
-                'http://facebook.com',
-                'http://facebook.com',
-                                 true //local file
-            ],
-            [
-                'http://toastytech.com/evil/',
-                '../links/index.html',
-                'http://toastytech.com/links/index.html',
-            ],
-            [
-                'http://toastytech.com/evil/evil2/',
-                '../../links/index.html',
-                'http://toastytech.com/links/index.html',
-            ],
-        ];
-    }
-        
-        /**
-         * @dataProvider crawlableLinksProvider
-         * @param string $url
-         * @param bool $expected
-         */
-    public function testCheckIfCrawlable($url, $expected)
-    {
-        $method = new \ReflectionMethod(Crawler::class, 'checkIfCrawlable');
-        $method->setAccessible(true);
-            
-        $ret = $method->invoke(new Crawler('http://example'), $url);
-        $this->assertEquals($expected, $ret);
-    }
-        
-        /**
-         * data provider for checkIfCrawlable method
-         * @return array
-         */
-    public function crawlableLinksProvider()
-    {
-        return [
-        ['javascript:void(0)', false],
-        ['', false],
-        ['#title', false],
-        ['tel:565645654', false],
-        ['mailto: zaid@wewebit.com', false],
-        ['/sample-doc.pdf', false],
-        ['/test.html', true],
-        ];
-    }
-
-        /**
-         * @dataProvider getPathFromUrlProvider
-         * @param string $baseUrl
-         * @param string $uri
-         * @param string $expected
-         * @param boolean $localFile
-         */
-    public function testGetPathFromUrl($baseUrl, $uri, $expected, $localFile)
-    {
-        $method = new \ReflectionMethod(Crawler::class, 'getPathFromUrl');
-        $method->setAccessible(true);
-            
-        $actual = $method->invoke(new Crawler($baseUrl, 2, ['localFile'=>$localFile]), $uri);
-        $this->assertEquals($expected, $actual, 'error on base url '.$baseUrl);
-    }
-
-        /**
-         * data provider for getPathFromUrl method
-         * @return array
-         */
-    public function getPathFromUrlProvider()
-    {
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        
-        return [
-        ['http://example.com', '/ar/testing', '/ar/testing', false],
-        ['http://example.com/ar/', '/ar/testing', '/ar/testing', false],
-        ['http://example.com/ar/', 'testing', '/ar/testing', false],
-        ['http://example.com', 'testing', '/testing', false],
-        ['http://example.com', '/evil/../index.html', '/index.html', false],
-        ['http://example.com', '/evil/evil2/../index.html', '/evil/index.html', false],
-        ['http://example.com', '/evil/evil2/../../index.html', '/index.html', false],
-        ['http://example.com/', 'http://example.com/testing', '/testing', false],
-        ['http://example.com/', 'mailto: zrashwani@gmail.com', 'mailto: zrashwani@gmail.com', false],
-        ['http://example.com', 'https://www.pinterest.com/OrbexFX/', 'https://www.pinterest.com/OrbexFX/', false],
-        ['http://example.com/index.html', 'index2.html', '/index2.html', false],
-        [__DIR__.'/../data/index.html', '/index.html', $dirPathNoDots.'/data/index.html', true],
-        [__DIR__.'/../data/index.html', '/index2.html', $dirPathNoDots.'/data/index2.html', true],
-        [__DIR__.'/../data/index.html', 'sub', $dirPathNoDots.'/data/sub', true],
-        ];
-    }
  
         /**
          * test filtering links callback
@@ -307,28 +160,29 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
                     ->traverse()
                     ->getLinks();
             
-        foreach ($links as $uri => $link_info) {
-            $this->assertRegExp('/.*\/blog.*$/u', isset($link_info['absolute_url'])?
-                    $link_info['absolute_url']:$uri);
+        foreach ($links as $uri => $linkObj) {
+            /*@var $linkObj Link*/
+            $this->assertRegExp('/.*\/blog.*$/u', $linkObj->getAbsoluteUrl());
         }
         
         $testHandler = new \Monolog\Handler\TestHandler();
         $logger2 = new Logger('crawler logger');
         $logger2->pushHandler($testHandler);
         
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        $filePath = $dirPathNoDots.'/data/index.html';
-        $crawler2 = new Crawler($filePath, 2, ['localFile'=>true]);
+        
+        $filePath = self::$baseTestUrl.'/index.html';
+        $crawler2 = new Crawler($filePath, 3);
         $crawler2
                 ->setLogger($logger2)
                 ->filterLinks(function($link){
-                    return strpos($link,'level1-2.html')!==false;
+                    return strpos($link,'level1-2.html')===false;
                 })
                 ->traverse();
-        $testHandler->hasRecordThatMatches(
-                '/.*(skipping\s"level1-2.html).*/',
+        
+        $this->assertTrue($testHandler->hasRecordThatMatches(
+                '/.*(skipping.+level1-2.html).*/',
                 200
-        );
+        ));
         
     }
         
@@ -339,37 +193,39 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
     {
         $logger = new Logger('crawler logger');
         $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
-           
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        $client = new Crawler($dirPathNoDots.'/data/filter1.html', 4);
+        
+        $client = new Crawler(self::$baseTestUrl.'/filter1.html', 4);
             
         $client->setLogger($logger)
-           ->filterLinks(function ($link) {
-                 return preg_match('/.*(dont\-visit).*/u', $link)===0; // prevent any link containing dont-visit in url
+           ->filterLinks(function ($link) {                
+                 return strpos((string)$link,'dont-visit')===false; // prevent any link containing dont-visit in url
            })->traverse();
         $links = $client->getLinks();
-            
-        foreach ($links as $uri => $link_info) {
-            $this->assertNotRegExp('/.*dont\-visit.*/U', isset($link_info['absolute_url'])?
-                    $link_info['absolute_url']:$uri);
+        
+        $this->assertGreaterThan(2,count($links));
+        foreach ($links as $linkObj) {
+            /*@var $linkObj Link*/
+            $this->assertNotRegExp('/.*dont\-visit.*/U', $linkObj->getAbsoluteUrl());
         }
     }
         
-        /**
-         * test crawling one level pages
-         */
+    /**
+     * test crawling one level pages
+     */
     public function testMetaInfo()
     {
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        $filePath = $dirPathNoDots.'/data/index.html';
-        $crawler = new Crawler($filePath, 1, ['localFile'=>true]);
+        $filePath = self::$baseTestUrl.'/index.html';
+        $crawler = new Crawler($filePath,1);
         $crawler->traverse();
         $links = $crawler->getLinks();
                 
-        $this->assertEquals($links[$filePath]['status_code'], 200, $filePath.' shall be 200 ok');
-        $this->assertEquals($links[$filePath]['title'], 'Main Page');
-        $this->assertEquals($links[$filePath]['meta_description'], 'meta description for main page');
-        $this->assertEquals($links[$filePath]['meta_keywords'], 'keywords1, keywords2');
+        /*@var $mainLink Link*/
+        $mainLink = $links[$filePath];
+        $this->assertEquals($mainLink->getStatusCode(), 200, $filePath.' shall be 200 ok');
+        
+        $this->assertEquals($mainLink->getMetaInfo('title'), 'Main Page');
+        $this->assertEquals($mainLink->getMetaInfo('meta_description'), 'meta description for main page');
+        $this->assertEquals($mainLink->getMetaInfo('meta_keywords'), 'keywords1, keywords2');
     }
     
     /**
@@ -377,25 +233,24 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
      */
     public function testFilterByDepth()
     {
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        $filePath = $dirPathNoDots.'/data/index.html';
-        $crawler = new Crawler($filePath, 3, ['localFile'=>true]);
+        $filePath = self::$baseTestUrl.'/index.html';
+        $crawler = new Crawler($filePath, 3);
         $crawler->traverse();
         $links = $crawler->getLinks();
         
-        $collection = new LinksCollection($links);
-        $depth1Links = $collection->filterByDepth(1);
+        $collection = new LinksCollection($links);        
+        $depth1Links = $collection->filterByDepth(1);        
         $depth2Links = $collection->filterByDepth(2);
         
-        $this->assertEquals(7, $depth1Links->count());
+        $this->assertEquals(6, $depth1Links->count());
         //ignoring already traversed links in previous levels
-        $this->assertEquals(6, $depth2Links->count()); 
+        $this->assertEquals(5, $depth2Links->count()); 
     }
     
     public function testGroupLinksByDepth(){
-        $dirPathNoDots = $this->getHtmlBaseDir();
-        $filePath = $dirPathNoDots.'/data/index.html';
-        $crawler = new Crawler($filePath, 6, ['localFile'=>true]);
+        
+        $filePath = self::$baseTestUrl.'/index.html';
+        $crawler = new Crawler($filePath, 6);
         $crawler->traverse();
         $links = $crawler->getLinks();
         
@@ -405,9 +260,9 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $this->assertArrayHasKey(5, $linksByDepth);
     }
         
-        /**
-         * test setting guzzle options
-         */
+    /**
+    * test setting guzzle options
+    */
     public function testConfigureGuzzleOptions()
     {
             
@@ -431,7 +286,7 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(false, $guzzleClient->getConfig('curl')[CURLOPT_SSL_VERIFYHOST]);
             
         $crawler2 = new Crawler('http://github.com', 2, array(
-        'auth' => array('username', 'password'),
+            'auth' => array('username', 'password'),
         ));
         /*@var $guzzleClient \GuzzleHttp\Client */
         $guzzleClient2 = $crawler2->getScrapClient()->getClient();
@@ -447,14 +302,12 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
         $logger = new Logger('test logger');
         $logger->pushHandler($testHandler);
         
-        $dirPathNoDots = $this->getHtmlBaseDir();  
-        $filePath = $dirPathNoDots.'/data/index.html';
+        $filePath = '/index.html';
         
-        $crawler = new Crawler($filePath, 2, ['localFile'=>true]);
+        $crawler = new Crawler(self::$baseTestUrl.$filePath, 2);
         $crawler->setLogger($logger);
         $crawler->traverse();
         
-                
         $this->assertFalse(
             $testHandler->hasRecordThatMatches(
                 '/.*(crawling\stel\:).*/',
@@ -471,41 +324,31 @@ class CrawlerTest extends \PHPUnit_Framework_TestCase
     }
     
     public function testGroupLinksGroupedBySource(){
+               
+        $filePath = '/index.html';
         
-        $dirPathNoDots = $this->getHtmlBaseDir();        
-        $filePath = $dirPathNoDots.'/data/index.html';
-        
-        $crawler = new Crawler($filePath, 3, ['localFile'=>true]);
+        $crawler = new Crawler(self::$baseTestUrl.$filePath, 3);
         $crawler->traverse();
         $links = $crawler->getLinks();
         
         $collection = new LinksCollection($links);        
         $linksBySource = $collection->groupLinksGroupedBySource();
         
-        $this->assertArrayHasKey($dirPathNoDots.'/data/sub_dir/level3-1.html', $linksBySource);
-        $this->assertArrayHasKey($dirPathNoDots.'/data/level1-1.html', $linksBySource);
+        $this->assertArrayHasKey(self::$baseTestUrl.'/sub_dir/level3-1.html', $linksBySource);
+        $this->assertArrayHasKey(self::$baseTestUrl.'/level1-1.html', $linksBySource);
         
-        $this->assertEquals(1,count($linksBySource[$dirPathNoDots.'/data/sub_dir/level3-1.html']));
-        $this->assertEquals(2,count($linksBySource[$dirPathNoDots.'/data/level1-1.html']));
+        $this->assertEquals(1,count($linksBySource[self::$baseTestUrl.'/sub_dir/level3-1.html']));
+        $this->assertEquals(2,count($linksBySource[self::$baseTestUrl.'/level1-1.html']));
     }
 
     
-    public function testNonFoundUrl(){
+    public function testNotResolvedUrl(){
         $nonFoundUrl = 'http://non-existing-url.com';
         $crawler = new Crawler($nonFoundUrl);
         $links = $crawler->traverse()
                 ->getLinks();
         
-        $this->assertEquals(404,$links[$nonFoundUrl]['status_code']);
+        $this->assertEquals(500,$links[$nonFoundUrl]->getStatusCode());
     }
 
-    /**
-     * getting base directory of html files
-     * @return string
-     */
-    protected function getHtmlBaseDir(){        
-        $parts = explode('/',__DIR__);
-        unset($parts[count($parts)-1]);
-        return implode('/',$parts);        
-    }    
 }
