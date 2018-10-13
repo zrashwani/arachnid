@@ -123,7 +123,7 @@ All pull requests must adhere to the [PSR-2 standard][psr2].
 
 ## System Requirements
 
-* PHP 5.6.0+
+* PHP 7.1.0+
 
 ## Authors
 
