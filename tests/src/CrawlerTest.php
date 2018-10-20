@@ -34,13 +34,13 @@ class CrawlerTest extends TestCase
         $url = 'https://www.google.com/';
         $crawler = new Crawler($url, 1);
         $crawler->traverse();
-        $links = $crawler->getLinks();
+        $links = $crawler->getLinks();        
         $this->assertEquals(get_class($crawler->getScrapClient()), \Goutte\Client::class);
 
         /*@var $link Link */
         $mainLink = $links[$url];
         $this->assertInstanceOf(Link::class, $mainLink);
-        $this->assertEquals($mainLink->getStatusCode(), 200, $url.' shall be 200 ok');
+        $this->assertEquals(200, $mainLink->getStatusCode(), $url.' shall be 200 ok');
         $this->assertGreaterThan(3, count($links));
     }
         
@@ -206,7 +206,7 @@ class CrawlerTest extends TestCase
         foreach ($links as $linkObj) {
             /*@var $linkObj Link*/
             $this->assertNotRegExp('/.*dont\-visit.*/U', $linkObj->getAbsoluteUrl());
-        }
+        }        
     }
         
     /**
@@ -224,8 +224,8 @@ class CrawlerTest extends TestCase
         $this->assertEquals($mainLink->getStatusCode(), 200, $filePath.' shall be 200 ok');
         
         $this->assertEquals($mainLink->getMetaInfo('title'), 'Main Page');
-        $this->assertEquals($mainLink->getMetaInfo('meta_description'), 'meta description for main page');
-        $this->assertEquals($mainLink->getMetaInfo('meta_keywords'), 'keywords1, keywords2');
+        $this->assertEquals($mainLink->getMetaInfo('metaDescription'), 'meta description for main page');
+        $this->assertEquals($mainLink->getMetaInfo('metaKeywords'), 'keywords1, keywords2');
     }
     
     /**

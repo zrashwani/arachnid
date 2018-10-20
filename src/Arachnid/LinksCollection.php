@@ -22,7 +22,7 @@ class LinksCollection extends Collection{
      */
     public function filterByDepth($depth){
         return $this->filter(function(Link $link) use($depth){
-            return $link->getMetaInfo('depth') == $depth;
+            return $link->getCrawlDepth() == $depth;
         })->map(function(Link $link){
             return [
                 'source_page' => $link->getParentUrl(),
@@ -60,7 +60,7 @@ class LinksCollection extends Collection{
     public function groupLinksByDepth(){
         $final_items = [];
         $this->each(function(Link $linkObj, $uri) use(&$final_items){
-            $final_items[$linkObj->getMetaInfo('depth')][$uri] = [
+            $final_items[$linkObj->getCrawlDepth()][$uri] = [
                'link'  => $linkObj->getAbsoluteUrl(),
                'source_page' => $linkObj->getParentUrl(),
             ];          

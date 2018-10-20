@@ -159,7 +159,7 @@ class Crawler
         
         return $links;
     }
-
+    
     /**
      * Crawl single URL
      * @param Link $link
@@ -167,7 +167,7 @@ class Crawler
      */
     protected function traverseSingle(Link $linkObj, $depth, $parentUrl = null)
     {        
-        $linkObj->setMetaInfo('depth', $depth);
+        $linkObj->setCrawlDepth($depth);
         $hash = $linkObj->getAbsoluteUrl(false);        
         $this->links[$hash] = $linkObj;        
         if ($linkObj->shouldNotVisit()==true) {
@@ -197,11 +197,12 @@ class Crawler
             
             $linkObj->setStatusCode($statusCode);            
             
-            if ($statusCode === 200) {
-                $content_type = 'text/html'; //$response->getHeader('Content-Type');
+            if ($statusCode >= 200 && $statusCode <= 299) {
+                $contentType = $response->getHeader('Content-Type');
+                $linkObj->setContentType($contentType);
 
                 //traverse children in case the response in HTML document only
-                if (strpos($content_type, 'text/html') !== false) {
+                if (strpos($contentType, 'text/html') !== false) {
                     $this->extractMetaInfo($crawler, $hash);
 
                     $childLinks = array();                    
@@ -234,7 +235,8 @@ class Crawler
     }
 
     /**
-     * create and configure goutte client used for scraping
+     * create and configure client used for scrapping
+     * it will configure goutte client by default
      * @return GoutteClient
      */
     public function getScrapClient()
@@ -253,7 +255,11 @@ class Crawler
         return $this->scrapClient;
     }
 
-    public function setScrapClient($client)
+    /**
+     * set custom scrap client
+     * @param ScrapClient $client
+     */
+    public function setScrapClient(ScrapClient $client)
     {
         $this->scrapClient = $client;
     }
@@ -292,11 +298,11 @@ class Crawler
             }
             if (isset($this->links[$hash]) === false) {
                 $this->links[$hash] = $info;
-                $childLink->setMetaInfo('depth', $depth);		
+                $childLink->setCrawlDepth($depth);		
             } else {		
                 $originalLink = $this->links[$hash];
-                $originalLink->addMetaInfo('original_urls',$childLink->getOriginalUrl());
-                $originalLink->addMetaInfo('links_text',$childLink->getMetaInfo('links_text'));                
+                $originalLink->addMetaInfo('originalUrls',$childLink->getOriginalUrl());
+                $originalLink->addMetaInfo('linksText',$childLink->getMetaInfo('linksText'));                
             }
 
             $this->childrenByDepth[$depth][$sourceUrl->getAbsoluteUrl(false)][] = $hash;                        
@@ -321,7 +327,7 @@ class Crawler
                 return;
             }
             $nodeLink = new Link($href,$pageLink);
-            $nodeLink->addMetaInfo('links_text', $nodeText);
+            $nodeLink->addMetaInfo('linksText', $nodeText);
             
             $hash = $nodeLink->getAbsoluteUrl(false,false);
             if(isset($this->links[$hash]) == false){
@@ -352,6 +358,21 @@ class Crawler
         return $this;
     }
     
+    public function getLinksArray(){
+        $links = $this->getLinks();
+        
+        return array_map(function(Link $link){
+            return [
+              'fullUrl' => $link->getAbsoluteUrl(),
+              'uri' => $link->getPath(),
+              'metaInfo' => $link->getMetaInfoArray(),
+              'parentLink' => $link->getParentUrl(),
+              'statusCode' => $link->getStatusCode(), 
+              'contentType' => $link->getContentType(), 
+            ];
+        },$links);
+    }    
+    
     /**
      * Extract meta title/description/keywords information from url
      * @param \Symfony\Component\DomCrawler\Crawler $crawler
@@ -362,27 +383,35 @@ class Crawler
         /*@var $currentLink Link */
         $currentLink = $this->links[$url];
         $currentLink->setMetaInfo('title', '');
-        $currentLink->setMetaInfo('meta_keywords', '');
-        $currentLink->setMetaInfo('meta_description', '');        
+        $currentLink->setMetaInfo('metaKeywords', '');
+        $currentLink->setMetaInfo('metaDescription', '');        
         
         $currentLink->setMetaInfo('title',strip_tags($crawler->filter('title')->html()));
         
         $crawler->filterXPath('//meta[@name="description"]')->each(function (DomCrawler $node) use (&$currentLink) {
-            $currentLink->setMetaInfo('meta_description', strip_tags($node->attr('content')));
+            $currentLink->setMetaInfo('metaDescription', strip_tags($node->attr('content')));
         });
         $crawler->filterXPath('//meta[@name="keywords"]')->each(function (DomCrawler $node) use (&$currentLink) {
-            $currentLink->setMetaInfo('meta_keywords',trim($node->attr('content')));
+            $currentLink->setMetaInfo('metaKeywords',trim($node->attr('content')));
         });
 
-        $h1_count = $crawler->filter('h1')->count();
-        $currentLink->setMetaInfo('h1_count',$h1_count);
-        $currentLink->setMetaInfo('h1_contents', array());
-
-        if ($h1_count > 0) {
+        $h1Count = $crawler->filter('h1')->count();
+        $currentLink->setMetaInfo('h1Count',$h1Count);
+        $currentLink->setMetaInfo('h1Contents', array());
+        if ($h1Count > 0) {
             $crawler->filter('h1')->each(function (DomCrawler $node, $i) use ($currentLink) {
-                $currentLink->addMetaInfo('h1_contents',trim($node->text()));
+                $currentLink->addMetaInfo('h1Contents',trim($node->text()));
             });
-        }
+        }        
+        
+        $h2Count = $crawler->filter('h2')->count();
+        $currentLink->setMetaInfo('h2Count',$h2Count);
+        $currentLink->setMetaInfo('h2Contents', array());
+        if ($h2Count > 0) {
+            $crawler->filter('h2')->each(function (DomCrawler $node, $i) use ($currentLink) {
+                $currentLink->addMetaInfo('h2Contents',trim($node->text()));
+            });
+        }        
     }
 
     /**

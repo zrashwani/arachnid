@@ -26,6 +26,10 @@ class Link extends GuzzleUri
     
     private $statusCode;
     
+    private $contentType;
+    
+    private $crawlDepth;
+    
     private $isVisited = false;
     
     private $shouldVisit = true;
@@ -49,6 +53,24 @@ class Link extends GuzzleUri
     
     public function getStatusCode(){
         return $this->statusCode;
+    }
+
+    public function setContentType($contentType){
+        $this->contentType = $contentType;
+        return $this;
+    }
+    
+    public function getContentType(){
+        return $this->contentType;
+    }
+    
+    public function setCrawlDepth($depth){
+        $this->crawlDepth = $depth;
+        return $this;
+    }
+    
+    public function getCrawlDepth(){
+        return $this->crawlDepth;
     }
     
     public function setErrorInfo($errorInfo){
