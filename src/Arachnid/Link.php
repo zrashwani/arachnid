@@ -95,7 +95,7 @@ class Link extends GuzzleUri
     }
     
     public function shouldNotVisit(){
-        return $this->shouldVisit == false;
+        return $this->shouldVisit === false;
     }
     
     public function getMetaInfoArray(){
@@ -103,7 +103,7 @@ class Link extends GuzzleUri
     }
     
     public function getMetaInfo($name){
-        return isset($this->metaInfo[$name])==true?
+        return isset($this->metaInfo[$name])===true?
               $this->metaInfo[$name]:null;
     }
     
@@ -129,7 +129,7 @@ class Link extends GuzzleUri
      */
     public function getAbsoluteUrl($withFragment=true)
     {              
-        if($this->isCrawlable() == false && empty($this->getFragment())){
+        if($this->isCrawlable() === false && empty($this->getFragment())){
             $absolutePath = $this->getOriginalUrl();
         }else{            
             if($this->parentLink !==null){
@@ -143,7 +143,7 @@ class Link extends GuzzleUri
                 $newUri->getAuthority(),
                 $newUri->getPath(),
                 $newUri->getQuery(),
-                $withFragment==true?$this->getFragment():""
+                $withFragment===true?$this->getFragment():""
             );
         }
         
@@ -187,7 +187,7 @@ class Link extends GuzzleUri
     public function isExternal()
     {
         $parentLink = $this->parentLink;
-        if($parentLink==null){ //parentLink is null in case of baseUrl
+        if($parentLink===null){ //parentLink is null in case of baseUrl
             return false;
         }
                     

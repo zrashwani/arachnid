@@ -132,7 +132,7 @@ class Crawler
                 $parentLink = $this->links[$parentUrl];
                 foreach($parentChilds as $childUrl){
                     $childLink = new Link($childUrl,$parentLink);
-                    $this->traverseSingle($childLink, $depth, $parentLink);
+                    $this->traverseSingle($childLink, $depth);
                 }
                 $count++;
             }
@@ -151,9 +151,9 @@ class Crawler
         if ($this->filterCallback === null) {
             $links = $this->links;
         } else {
-            $links = array_filter($this->links, function ($linkObj) {
+            $links = array_filter($this->links, function (Link $linkObj) {
                 /*@var $linkObj Link */
-                return $linkObj->shouldNotVisit() == false;
+                return $linkObj->shouldNotVisit() === false;
             });
         }
         
@@ -165,15 +165,15 @@ class Crawler
      * @param Link $link
      * @param int    $depth
      */
-    protected function traverseSingle(Link $linkObj, $depth, $parentUrl = null)
+    protected function traverseSingle(Link $linkObj, $depth)
     {        
         $linkObj->setCrawlDepth($depth);
         $hash = $linkObj->getAbsoluteUrl(false);        
         $this->links[$hash] = $linkObj;        
-        if ($linkObj->shouldNotVisit()==true) {
+        if ($linkObj->shouldNotVisit()===true) {
             return;
         }        
-        if($linkObj->isCrawlable()==false){
+        if($linkObj->isCrawlable()===false){
             $linkObj->setAsShouldVisit(false);
             $this->log(LogLevel::INFO, 'skipping "'.$hash.'" not crawlable link', ['depth'=>$depth]);
             return;
@@ -206,7 +206,7 @@ class Crawler
                     $this->extractMetaInfo($crawler, $hash);
 
                     $childLinks = array();                    
-                    if ($linkObj->isExternal()==false) {                        
+                    if ($linkObj->isExternal()===false) {                        
                         $childLinks = $this->extractLinksInfo($crawler, $linkObj);
                     }                    
                     $linkObj->setAsVisited();    
@@ -319,18 +319,18 @@ class Crawler
     public function extractLinksInfo(DomCrawler $crawler, Link $pageLink)
     {        
         $childLinks = array();
-        $crawler->filter('a')->each(function ($node, $i) use (&$childLinks, $pageLink) {
+        $crawler->filter('a')->each(function (DomCrawler $node, $i) use (&$childLinks, $pageLink) {
             $nodeText = trim($node->html());               
             
             $href = $node->extract('href')[0];
-            if(empty($href)==true){
+            if(empty($href)===true){
                 return;
             }
             $nodeLink = new Link($href,$pageLink);
             $nodeLink->addMetaInfo('linksText', $nodeText);
             
             $hash = $nodeLink->getAbsoluteUrl(false,false);
-            if(isset($this->links[$hash]) == false){
+            if(isset($this->links[$hash]) === false){
                 $childLinks[$hash] = $nodeLink;
             }
             
