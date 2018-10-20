@@ -350,5 +350,34 @@ class CrawlerTest extends TestCase
         
         $this->assertEquals(500,$links[$nonFoundUrl]->getStatusCode());
     }
+    
+    public function testImageLink(){
+        $filePath = '/testWithImage.html';
+        $crawler = new Crawler(self::$baseTestUrl.$filePath, 3);
+        $crawler->traverse();
+        $links = $crawler->getLinks();
+        
+        $this->assertArrayHasKey(self::$baseTestUrl.'/testWithImage.html', $links);
+        $this->assertArrayHasKey(self::$baseTestUrl.'/images/php-large.png', $links);
+        
+        /*@var $imageLink Link*/
+        $imageLink = $links[self::$baseTestUrl.'/images/php-large.png'];
+        $this->assertEquals($imageLink->getContentType(),'image/png');
+    }
+    
+    public function testGetLinksArray(){
+        $filePath = '/testWithImage.html';
+        $crawler = new Crawler(self::$baseTestUrl.$filePath, 3);
+        $crawler->traverse();
+        $links = $crawler->getLinksArray();        
+        
+        $this->assertArrayHasKey(self::$baseTestUrl.'/testWithImage.html', $links);
+        $this->assertArrayHasKey(self::$baseTestUrl.'/images/php-large.png', $links);
+        $this->assertArrayHasKey('contentType',$links[self::$baseTestUrl.'/images/php-large.png']);
+        $this->assertArrayHasKey('statusCode',$links[self::$baseTestUrl.'/images/php-large.png']);
+        
+        $this->assertEquals(200, $links[self::$baseTestUrl.'/images/php-large.png']['statusCode']);
+        $this->assertEquals('image/png', $links[self::$baseTestUrl.'/images/php-large.png']['contentType']);
+    }
 
 }
