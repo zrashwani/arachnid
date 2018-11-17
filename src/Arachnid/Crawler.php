@@ -8,7 +8,6 @@ use GuzzleHttp\Exception\ClientException;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
 use Psr\Log\LogLevel;
 use Arachnid\Link;
-use Symfony\Component\Panther\DomCrawler\Crawler as PantherCrawler;
 
 /**
  * Crawler
@@ -162,7 +161,7 @@ class Crawler
     
     /**
      * Crawl single URL
-     * @param Link $link
+     * @param Link $linkObj
      * @param int    $depth
      */
     protected function traverseSingle(Link $linkObj, $depth)
@@ -313,8 +312,7 @@ class Crawler
     /**
      * Extract links information from url
      * @param  \Symfony\Component\DomCrawler\Crawler $crawler
-     * @param  string                                $url
-     * @return array
+     * @param Link $pageLink
      */
     public function extractLinksInfo(DomCrawler $crawler, Link $pageLink)
     {        
@@ -369,6 +367,7 @@ class Crawler
               'parentLink' => $link->getParentUrl(),
               'statusCode' => $link->getStatusCode(), 
               'contentType' => $link->getContentType(), 
+              'errorInfo' => $link->getErrorInfo()  
             ];
         },$links);
     }    

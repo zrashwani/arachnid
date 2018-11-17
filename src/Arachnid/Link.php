@@ -77,6 +77,10 @@ class Link extends GuzzleUri
         $this->errorInfo = $errorInfo;
     }
     
+    public function getErrorInfo(){
+        return $this->errorInfo;
+    }
+    
     public function getOriginalUrl(){
         return $this->originalUrl;
     }

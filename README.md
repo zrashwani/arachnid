@@ -42,7 +42,7 @@ Here's a quick demo to crawl a website:
     $crawler->traverse();
 
     // Get link data
-    $links = $crawler->getLinks();
+    $links = $crawler->getLinksArray(); //to get links as objects use getLinks() method
     print_r($links);
 
 ## Advanced Usage:
