@@ -37,20 +37,24 @@ Here's a quick demo to crawl a website:
 
     $url = 'http://www.example.com';
     $linkDepth = 3;
-    // Initiate crawl    
+    // Initiate crawl  
+    // By default it will use GoutteClient, 
+    // If headless browser mode enabled, it will use Chrome engine in background useful to get javacript-based content
     $crawler = new \Arachnid\Crawler($url, $linkDepth);
-    $crawler->traverse();
+    $crawler->enableHeadlessBrowserMode()
+            ->traverse();
 
     // Get link data
     $links = $crawler->getLinksArray(); //to get links as objects use getLinks() method
     print_r($links);
 
+    
 ## Advanced Usage:
    There are other options you can set to the crawler:
 
 
    Set additional options to underlying guzzle client, by specifying array of options in constructor 
-or passing it to `setCrawlerOptions`:
+or creating Goutte scrapper with desired options:
 
 
     <?php
@@ -68,7 +72,8 @@ or passing it to `setCrawlerOptions`:
             'connect_timeout' => 30,
         );
                         
-        $crawler->setCrawlerOptions($options);
+        $scrapperClient = \Arachnid\Adapters\CrawlingFactory::create(\Arachnid\Adapters\CrawlingFactory::TYPE_GOUTTE,$options);
+        $crawler->setScrapClient($scrapperClient);
 
 
    You can inject a [PSR-3][psr3] compliant logger object to monitor crawler activity (like [Monolog][monolog]):

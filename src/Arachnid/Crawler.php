@@ -2,10 +2,10 @@
 
 namespace Arachnid;
 
-use Goutte\Client as GoutteClient;
-use Symfony\Component\BrowserKit\Client as ScrapClient;
 use GuzzleHttp\Exception\ClientException;
 use Symfony\Component\DomCrawler\Crawler as DomCrawler;
+use Arachnid\Adapters\CrawlingAdapterInterface;
+use Arachnid\Adapters\CrawlingFactory;
 use Psr\Log\LogLevel;
 use Arachnid\Link;
 
@@ -32,8 +32,8 @@ class Crawler
 {
 
     /**
-     * scrap client used for crawling the files, can be either Goutte or local file system
-     * @var ScrapClient $scrapClient
+     * Scrap client used for crawling the files, can be either Goutte or Panther chrome headless browser
+     * @var CrawlingAdapterInterface $scrapClient
      */
     protected $scrapClient;
 
@@ -68,16 +68,22 @@ class Crawler
     protected $logger;
     
     /**
-     * store options to guzzle client associated with crawler
-     * @var array
-     */
-    protected $configOptions;
-    
-    /**
      * store children links arranged by depth to apply breadth first search
      * @var array
      */
     private $childrenByDepth;
+    
+    /**
+     * configuration for scrapping client
+     * @var array 
+     */
+    private $config;
+    
+    /**
+     * use headless browser crawler
+     * @var boolean
+     */
+    private $headlessBrowserEnabled;
     
     /**
      * Constructor
@@ -90,21 +96,10 @@ class Crawler
         $this->baseUrl = new Link($baseUrl);       
         $this->maxDepth = $maxDepth;
         $this->links = array();
-        
-        $this->setCrawlerOptions($config);
-    }
-    
-    /**
-     * set crawler options
-     * @param array $config
-     */
-    public function setCrawlerOptions(array $config)
-    {
-        $this->configOptions = $config;
+        $this->config = $config;
     }
 
     /**
-     *
      * Initiate the crawl
      * @param UriInterface $url
      * @return \Arachnid\Crawler
@@ -114,7 +109,7 @@ class Crawler
         if ($url === null) {            
             $url = $this->baseUrl;
         }
-        
+                
         $this->links[$url->getAbsoluteUrl(false)] = $url;        
         $this->traverseSingle($url, 0);
 
@@ -160,6 +155,26 @@ class Crawler
     }
     
     /**
+     * get links information as array
+     * @return array
+     */
+    public function getLinksArray(){
+        $links = $this->getLinks();
+        
+        return array_map(function(Link $link){
+            return [
+              'fullUrl' => $link->getAbsoluteUrl(),
+              'uri' => $link->getPath(),
+              'metaInfo' => $link->getMetaInfoArray(),
+              'parentLink' => $link->getParentUrl(),
+              'statusCode' => $link->getStatusCode(), 
+              'contentType' => $link->getContentType(), 
+              'errorInfo' => $link->getErrorInfo()  
+            ];
+        },$links);
+    }  
+    
+    /**
      * Crawl single URL
      * @param Link $linkObj
      * @param int    $depth
@@ -188,16 +203,15 @@ class Crawler
         try {
             $this->log(LogLevel::INFO, 'crawling '.$hash. ' in process', ['depth'=> $depth]);
             $client = $this->getScrapClient();                 
-            $crawler = $client->request('GET', $linkObj->getAbsoluteUrl()); 
-            /*@var $response \Symfony\Component\BrowserKit\Response */
+            $crawler = $client->requestPage($linkObj->getAbsoluteUrl()); 
             
-            $response = $client->getResponse();
-            $statusCode =  $response->getStatus();
+            $headers = $linkObj->extractHeaders();
             
+            $statusCode =  $headers['Status-Code'];
             $linkObj->setStatusCode($statusCode);            
             
             if ($statusCode >= 200 && $statusCode <= 299) {
-                $contentType = $response->getHeader('Content-Type');
+                $contentType = $headers['Content-Type'];
                 $linkObj->setContentType($contentType);
 
                 //traverse children in case the response in HTML document only
@@ -236,31 +250,37 @@ class Crawler
     /**
      * create and configure client used for scrapping
      * it will configure goutte client by default
-     * @return GoutteClient
+     * @return CrawlingAdapterInterface
      */
     public function getScrapClient()
     {
-        if (!$this->scrapClient) {
-            //default client will be Goutte php Scrapper
-            $client = new GoutteClient();
-            $client->followRedirects();
-            $configOptions = $this->configureGuzzleOptions();
-            $guzzleClient = new \GuzzleHttp\Client($configOptions);
-            $client->setClient($guzzleClient);
-            
-            $this->scrapClient = $client;
-        }
-
+        if ($this->scrapClient === null){
+            if($this->headlessBrowserEnabled === true){
+                $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_HEADLESS_BROWSER, $this->config);
+            }else{
+                $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_GOUTTE, $this->config);
+            }
+            $this->setScrapClient($scrapClient);
+        }        
         return $this->scrapClient;
     }
 
     /**
      * set custom scrap client
-     * @param ScrapClient $client
+     * @param CrawlingAdapterInterface $client
      */
-    public function setScrapClient(ScrapClient $client)
+    public function setScrapClient(CrawlingAdapterInterface $client)
     {
         $this->scrapClient = $client;
+    }
+    
+    /**
+     * enable headless browser by using chrome client in the background
+     * @return $this
+     */
+    public function enableHeadlessBrowserMode(){
+        $this->headlessBrowserEnabled = true;
+        return $this;
     }
         
     /**
@@ -355,23 +375,7 @@ class Crawler
         $this->logger = $logger;
         return $this;
     }
-    
-    public function getLinksArray(){
-        $links = $this->getLinks();
-        
-        return array_map(function(Link $link){
-            return [
-              'fullUrl' => $link->getAbsoluteUrl(),
-              'uri' => $link->getPath(),
-              'metaInfo' => $link->getMetaInfoArray(),
-              'parentLink' => $link->getParentUrl(),
-              'statusCode' => $link->getStatusCode(), 
-              'contentType' => $link->getContentType(), 
-              'errorInfo' => $link->getErrorInfo()  
-            ];
-        },$links);
-    }    
-    
+      
     /**
      * Extract meta title/description/keywords information from url
      * @param \Symfony\Component\DomCrawler\Crawler $crawler
@@ -385,7 +389,7 @@ class Crawler
         $currentLink->setMetaInfo('metaKeywords', '');
         $currentLink->setMetaInfo('metaDescription', '');        
         
-        $currentLink->setMetaInfo('title',strip_tags($crawler->filter('title')->html()));
+        $currentLink->setMetaInfo('title',trim(strip_tags($crawler->filter('title')->html())));
         
         $crawler->filterXPath('//meta[@name="description"]')->each(function (DomCrawler $node) use (&$currentLink) {
             $currentLink->setMetaInfo('metaDescription', strip_tags($node->attr('content')));
@@ -425,23 +429,5 @@ class Crawler
             $this->logger->log($level, $message, $context);
         }
     }
-
-    /**
-     * configure guzzle objects
-     * @return array
-     */
-    protected function configureGuzzleOptions()
-    {
-        $cookieName = time()."_".substr(md5(microtime()), 0, 5).".txt";
-                
-        $defaultConfig = array(
-            'curl' => array(
-                CURLOPT_COOKIEJAR      => $cookieName,
-                CURLOPT_COOKIEFILE     => $cookieName,
-            ),
-        );
-        $configOptions = array_merge_recursive($this->configOptions, $defaultConfig);
-        
-        return $configOptions;
-    }
+    
 }

@@ -3,6 +3,7 @@
 namespace Arachnid;
 
 use Arachnid\Link;
+use Arachnid\Adapters\CrawlingFactory;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 
@@ -35,7 +36,8 @@ class CrawlerTest extends TestCase
         $crawler = new Crawler($url, 1);
         $crawler->traverse();
         $links = $crawler->getLinks();        
-        $this->assertEquals(get_class($crawler->getScrapClient()), \Goutte\Client::class);
+        $this->assertEquals(get_class($crawler->getScrapClient()), Adapters\GoutteAdapter::class);
+        $this->assertEquals(get_class($crawler->getScrapClient()->getClient()), \Goutte\Client::class);
 
         /*@var $link Link */
         $mainLink = $links[$url];
@@ -50,8 +52,13 @@ class CrawlerTest extends TestCase
     public function testSetScrapClient()
     {
         $crawler = new Crawler('index', 1);
-        $crawler->setScrapClient(PantherClient::createChromeClient());
-        $this->assertInstanceOf(PantherClient::class,$crawler->getScrapClient());
+        $crawler->setScrapClient(CrawlingFactory::create(CrawlingFactory::TYPE_HEADLESS_BROWSER));
+        $this->assertInstanceOf(PantherClient::class,$crawler->getScrapClient()->getClient());
+        
+        //test enable headless browser mode function
+        $crawler2 = new Crawler('index',1);
+        $crawler2->enableHeadlessBrowserMode();
+        $this->assertInstanceOf(PantherClient::class,$crawler->getScrapClient()->getClient());
     }
 
     /**
@@ -267,20 +274,19 @@ class CrawlerTest extends TestCase
     {
             
         $options = array(
-        'curl' => array(
-        CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_SSL_VERIFYPEER => false,
-        ),
-        'timeout' => 30,
-        'connect_timeout' => 30,
+           'curl' => array(
+              CURLOPT_SSL_VERIFYHOST => false,
+              CURLOPT_SSL_VERIFYPEER => false,
+            ),
+            'timeout' => 30,
+            'connect_timeout' => 30,
         );
             
         $crawler = new Crawler('http://github.com', 2);
-        $crawler->setCrawlerOptions($options);
+        $crawler->setScrapClient(CrawlingFactory::create(CrawlingFactory::TYPE_GOUTTE,$options));
             
         /*@var $guzzleClient \GuzzleHttp\Client */
-        $guzzleClient = $crawler->getScrapClient()->getClient();
-            
+        $guzzleClient = $crawler->getScrapClient()->getClient()->getClient();        
         $this->assertEquals(30, $guzzleClient->getConfig('timeout'));
         $this->assertEquals(30, $guzzleClient->getConfig('connect_timeout'));
         $this->assertEquals(false, $guzzleClient->getConfig('curl')[CURLOPT_SSL_VERIFYHOST]);
@@ -289,7 +295,7 @@ class CrawlerTest extends TestCase
             'auth' => array('username', 'password'),
         ));
         /*@var $guzzleClient \GuzzleHttp\Client */
-        $guzzleClient2 = $crawler2->getScrapClient()->getClient();
+        $guzzleClient2 = $crawler2->getScrapClient()->getClient()->getClient();
             
         $actualConfigs = $guzzleClient2->getConfig();
         $this->assertArrayHasKey('auth', $actualConfigs);
@@ -354,6 +360,7 @@ class CrawlerTest extends TestCase
     public function testImageLink(){
         $filePath = '/testWithImage.html';
         $crawler = new Crawler(self::$baseTestUrl.$filePath, 3);
+        $crawler->enableHeadlessBrowserMode();
         $crawler->traverse();
         $links = $crawler->getLinks();
         
@@ -379,5 +386,40 @@ class CrawlerTest extends TestCase
         $this->assertEquals(200, $links[self::$baseTestUrl.'/images/php-large.png']['statusCode']);
         $this->assertEquals('image/png', $links[self::$baseTestUrl.'/images/php-large.png']['contentType']);
     }
+    
+    public function testInvalidCrawlingAdapter(){
+        $this->expectException(\RuntimeException::class);
+        
+        $crawler = new Crawler('index', 1);
+        $crawler->setScrapClient(CrawlingFactory::create('Invalid mode'));
+    }
 
+    public function testJavascriptBasedSite()
+    {
+        $crawler = new Crawler('https://teradata.github.io/', 2);
+        $crawler->enableHeadlessBrowserMode();
+        
+        $links = $crawler->traverse()->getLinksArray();
+        $this->assertGreaterThan(3, $links);
+    }    
+    
+    public function testJavascriptBased404(){
+        $url = 'https://www.teradata.com/404-for-page';
+        $crawler = new Crawler($url, 1);
+        $links = $crawler->enableHeadlessBrowserMode()
+                ->traverse()
+                ->getLinksArray();
+        $this->assertEquals($links[$url]['statusCode'], 404);
+    }
+    
+    public function testJavascriptContentType(){
+        $filePath = '/images/php-large.png';
+        $crawler = new Crawler(self::$baseTestUrl.$filePath, 3);
+        $links = $crawler->enableHeadlessBrowserMode()
+                         ->traverse()
+                         ->getLinksArray();
+        
+        $this->assertEquals(200, $links[self::$baseTestUrl.'/images/php-large.png']['statusCode']);
+        $this->assertEquals('image/png', $links[self::$baseTestUrl.'/images/php-large.png']['contentType']);
+    }
 }

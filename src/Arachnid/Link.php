@@ -215,6 +215,20 @@ class Link extends GuzzleUri
     }
     
     /**
+     * extract headers array for the link url
+     * @return array
+     */
+    public function extractHeaders(){
+        $headersArr = get_headers($this->getAbsoluteUrl(), 1);
+        if(isset($headersArr[0]) === true && strpos($headersArr[0], 'HTTP/') !== false){
+            $statusParts = explode(' ', $headersArr[0]);
+            $headersArr['Status-Code'] = $statusParts[1];
+        }
+        
+        return $headersArr;
+    }
+    
+    /**
      * remove dots from uri
      * @return string
      */
