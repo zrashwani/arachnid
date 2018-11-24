@@ -31,7 +31,7 @@ Then run `composer install`.
 ## Getting Started
 
 Here's a quick demo to crawl a website:
-
+```php
     <?php
     require 'vendor/autoload.php';
 
@@ -47,7 +47,7 @@ Here's a quick demo to crawl a website:
     // Get link data
     $links = $crawler->getLinksArray(); //to get links as objects use getLinks() method
     print_r($links);
-
+```
     
 ## Advanced Usage:
    There are other options you can set to the crawler:
@@ -56,7 +56,7 @@ Here's a quick demo to crawl a website:
    Set additional options to underlying guzzle client, by specifying array of options in constructor 
 or creating Goutte scrapper with desired options:
 
-
+```php
     <?php
         //third parameter is the options used to configure guzzle client
         $crawler = new \Arachnid\Crawler('http://github.com',2, 
@@ -74,10 +74,10 @@ or creating Goutte scrapper with desired options:
                         
         $scrapperClient = \Arachnid\Adapters\CrawlingFactory::create(\Arachnid\Adapters\CrawlingFactory::TYPE_GOUTTE,$options);
         $crawler->setScrapClient($scrapperClient);
-
+```
 
    You can inject a [PSR-3][psr3] compliant logger object to monitor crawler activity (like [Monolog][monolog]):
-
+```php
     <?php    
     $crawler = new \Arachnid\Crawler($url, $linkDepth); // ... initialize crawler   
 
@@ -86,9 +86,10 @@ or creating Goutte scrapper with desired options:
     $logger->pushHandler(new \Monolog\Handler\StreamHandler(sys_get_temp_dir().'/crawler.log'));
     $crawler->setLogger($logger);
     ?>
-
+```
    You can set crawler to visit only pages with specific criteria by specifying callback closure using `filterLinks` method:
 
+```php
     <?php
     //filter links according to specific callback as closure
     $links = $crawler->filterLinks(function($link){
@@ -98,10 +99,10 @@ or creating Goutte scrapper with desired options:
                     ->traverse()
                     ->getLinks();
 
-    
+```    
     
    You can use `LinksCollection` class to get simple statistics about the links, as following:
-
+```php
     <?php
     $links = $crawler->traverse()
                      ->getLinks();
@@ -112,6 +113,7 @@ or creating Goutte scrapper with desired options:
    
     //getting links for specific depth
     $depth2Links = $collection->getByDepth(2);
+```
 
 ## How to Contribute
 
