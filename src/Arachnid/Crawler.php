@@ -210,7 +210,7 @@ class Crawler
             $statusCode =  $headers['Status-Code'];
             $linkObj->setStatusCode($statusCode);            
             
-            if ($statusCode >= 200 && $statusCode <= 299) {
+            if ($this->checkCrawlableStatusCode($statusCode) === true) {
                 $contentType = $headers['Content-Type'];
                 $linkObj->setContentType($contentType);
 
@@ -428,6 +428,19 @@ class Crawler
         if (isset($this->logger) === true) {
             $this->logger->log($level, $message, $context);
         }
+    }
+    
+    /**
+     * check if specific status code can be crawled or not
+     * @param int $statusCode
+     * @return boolean
+     */
+    protected function checkCrawlableStatusCode($statusCode): bool{
+       if( $statusCode >= 400 && $statusCode <= 599 ){
+           return false;
+       }else{
+           return true;
+       }
     }
     
 }

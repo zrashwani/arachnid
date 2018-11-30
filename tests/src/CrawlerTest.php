@@ -422,4 +422,34 @@ class CrawlerTest extends TestCase
         $this->assertEquals(200, $links[self::$baseTestUrl.'/images/php-large.png']['statusCode']);
         $this->assertEquals('image/png', $links[self::$baseTestUrl.'/images/php-large.png']['contentType']);
     }
+    
+    /**
+     * data provide for checking status code if crawlable
+     * @return array data for check crawlable status code
+     */
+    public function crawlableStatusCodeProvider(){
+       return [
+           [301, true],
+           [302, true],
+           [200, true],
+           [201, true],
+           [404, false],
+           [403, false],
+           [500, false],
+           [503, false],
+       ];
+    }
+    
+    /**
+     * @dataProvider crawlableStatusCodeProvider
+     * @param int $statusCode
+     * @param bool $expected
+     */
+    public function testCrawlableStatusCode($statusCode, $expected){
+        $crawler = new Crawler('http://example.com');
+        $method = new \ReflectionMethod(Crawler::class, 'checkCrawlableStatusCode');
+        $method->setAccessible(true);
+        
+        $this->assertEquals($method->invoke($crawler, $statusCode), $expected);
+    }
 }

@@ -224,6 +224,9 @@ class Link extends GuzzleUri
             $statusParts = explode(' ', $headersArr[0]);
             $headersArr['Status-Code'] = $statusParts[1];
         }
+        if(is_array($headersArr['Content-Type']) === true){
+            $headersArr['Content-Type'] = current($headersArr['Content-Type']);
+        }
         
         return $headersArr;
     }
