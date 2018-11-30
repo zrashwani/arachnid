@@ -170,6 +170,7 @@ class Link extends GuzzleUri
             '@^javascript\:.*$@i',           
             '@^mailto\:.*@i',
             '@^tel\:.*@i',
+            '@^skype\:.*@i',
             '@^fax\:.*@i',
             '@.*(\.pdf)$@i'
         );
