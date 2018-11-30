@@ -158,8 +158,15 @@ class Crawler
      * get links information as array
      * @return array
      */
-    public function getLinksArray(){
+    public function getLinksArray($includeOnlyVisited = false){
         $links = $this->getLinks();
+        
+        if($includeOnlyVisited === true){
+            $links = array_filter($links, function (Link $linkObj) {
+                /*@var $linkObj Link */
+                return $linkObj->isVisited() === true;
+            });
+        }
         
         return array_map(function(Link $link){
             return [
@@ -169,7 +176,8 @@ class Crawler
               'parentLink' => $link->getParentUrl(),
               'statusCode' => $link->getStatusCode(), 
               'contentType' => $link->getContentType(), 
-              'errorInfo' => $link->getErrorInfo()  
+              'errorInfo' => $link->getErrorInfo(),
+              'crawlDepth' => $link->getCrawlDepth(),              
             ];
         },$links);
     }  
@@ -396,6 +404,9 @@ class Crawler
         });
         $crawler->filterXPath('//meta[@name="keywords"]')->each(function (DomCrawler $node) use (&$currentLink) {
             $currentLink->setMetaInfo('metaKeywords',trim($node->attr('content')));
+        });
+        $crawler->filterXPath('//link[@rel="canonical"]')->each(function(DomCrawler $node) use (&$currentLink){
+            $currentLink->setMetaInfo('canonicalLink',trim($node->attr('href')));
         });
 
         $h1Count = $crawler->filter('h1')->count();

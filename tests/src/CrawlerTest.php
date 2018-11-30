@@ -422,6 +422,24 @@ class CrawlerTest extends TestCase
         $this->assertEquals(200, $links[self::$baseTestUrl.'/images/php-large.png']['statusCode']);
         $this->assertEquals('image/png', $links[self::$baseTestUrl.'/images/php-large.png']['contentType']);
     }
+
+    public function testIncludeVisitedPagesOnly(){
+        $filePath = '/index.html';
+        $crawler = new Crawler(self::$baseTestUrl.$filePath, 1);
+        $links = $crawler->traverse()
+                         ->getLinksArray(true);
+        
+        $this->assertEquals(count($links), 1);
+    } 
+    
+    public function testCanonicalLink(){
+        $filePath = '/canonical-link.html';
+        $crawler = new Crawler(self::$baseTestUrl.$filePath, 1);
+        $links = $crawler->traverse()
+                         ->getLinksArray(true);
+        
+        $this->assertEquals('http://zrashwani.com/', $links[self::$baseTestUrl.$filePath]['metaInfo']['canonicalLink']);
+    }    
     
     /**
      * data provide for checking status code if crawlable
@@ -452,4 +470,5 @@ class CrawlerTest extends TestCase
         
         $this->assertEquals($method->invoke($crawler, $statusCode), $expected);
     }
+    
 }
