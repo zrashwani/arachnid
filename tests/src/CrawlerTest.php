@@ -43,6 +43,7 @@ class CrawlerTest extends TestCase
         $mainLink = $links[$url];
         $this->assertInstanceOf(Link::class, $mainLink);
         $this->assertEquals(200, $mainLink->getStatusCode(), $url.' shall be 200 ok');
+        $this->assertEquals('OK', $mainLink->getStatus(), $url.' shall be 200 ok');
         $this->assertGreaterThan(3, count($links));
     }
         
@@ -72,9 +73,10 @@ class CrawlerTest extends TestCase
         $links = $crawler->getLinks();        
         $this->assertArrayHasKey(self::$baseTestUrl.'/test.html', $links);
         
-        $mainLink = $links[self::$baseTestUrl.'/test.html'];
+        $mainLink = $links[self::$baseTestUrl.'/test.html'];        
         $this->assertInstanceOf(Link::class, $mainLink,'entry must be instance of Link class');
         $this->assertEquals($mainLink->getStatusCode(), 404,'status code must be 404, given: '.$mainLink->getStatusCode());
+        $this->assertEquals($mainLink->getStatus(), 'Not Found','status code must be 404, given: '.$mainLink->getStatusCode());
     }
 
     /**

@@ -26,6 +26,8 @@ class Link extends GuzzleUri
     
     private $statusCode;
     
+    private $status;
+    
     private $contentType;
     
     private $crawlDepth;
@@ -53,6 +55,15 @@ class Link extends GuzzleUri
     
     public function getStatusCode(){
         return $this->statusCode;
+    }
+    
+    public function setStatus($status){
+        $this->status = $status;
+        return $this;
+    }
+    
+    public function getStatus(){
+        return $this->status;
     }
 
     public function setContentType($contentType){
@@ -220,13 +231,18 @@ class Link extends GuzzleUri
      * @return array
      */
     public function extractHeaders(){
-        $headersArr = get_headers($this->getAbsoluteUrl(), 1);
+        $headersArrRaw = get_headers($this->getAbsoluteUrl(), 1); 
+        $headersArr = array_change_key_case($headersArrRaw, CASE_LOWER);        
         if(isset($headersArr[0]) === true && strpos($headersArr[0], 'HTTP/') !== false){
-            $statusParts = explode(' ', $headersArr[0]);
-            $headersArr['Status-Code'] = $statusParts[1];
+            $statusStmt = $headersArr[0];
+            $statusParts = explode(' ', $statusStmt);
+            $headersArr['status-code'] = $statusParts[1];
+            
+            $statusIndex = strrpos($statusStmt, $statusParts[1])+ strlen($statusParts[1])+1;
+            $headersArr['status'] = trim(substr($statusStmt, $statusIndex));
         }
-        if(is_array($headersArr['Content-Type']) === true){
-            $headersArr['Content-Type'] = current($headersArr['Content-Type']);
+        if(is_array($headersArr['content-type']) === true){
+            $headersArr['content-type'] = current($headersArr['content-type']);
         }
         
         return $headersArr;

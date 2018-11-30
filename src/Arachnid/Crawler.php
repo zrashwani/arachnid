@@ -175,6 +175,7 @@ class Crawler
               'metaInfo' => $link->getMetaInfoArray(),
               'parentLink' => $link->getParentUrl(),
               'statusCode' => $link->getStatusCode(), 
+              'status' => $link->getStatus(), 
               'contentType' => $link->getContentType(), 
               'errorInfo' => $link->getErrorInfo(),
               'crawlDepth' => $link->getCrawlDepth(),              
@@ -215,11 +216,12 @@ class Crawler
             
             $headers = $linkObj->extractHeaders();
             
-            $statusCode =  $headers['Status-Code'];
-            $linkObj->setStatusCode($statusCode);            
+            $statusCode =  $headers['status-code'];
+            $linkObj->setStatusCode($statusCode);
+            $linkObj->setStatus($headers['status']);            
             
             if ($this->checkCrawlableStatusCode($statusCode) === true) {
-                $contentType = $headers['Content-Type'];
+                $contentType = $headers['content-type'];
                 $linkObj->setContentType($contentType);
 
                 //traverse children in case the response in HTML document only
