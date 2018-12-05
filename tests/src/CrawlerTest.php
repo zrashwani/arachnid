@@ -150,12 +150,28 @@ class CrawlerTest extends TestCase
         $collection = new LinksCollection($links);
         $this->assertEquals($collection->getBrokenLinks()->count(),1);
     }
+        
+    /**
+     * test broken links
+     */
+    public function testBrokenExternalLink()
+    {
+        $filePath = self::$baseTestUrl.'/broken-external-links.html';
+        $crawler = new Crawler($filePath, 2); //non existing url/path        
+        $crawler->traverse();
+
+        $links = $crawler->getLinks();          
+        $this->assertEquals($links[$filePath]->getStatusCode(), 200);
+        
+        $collection = new LinksCollection($links);
+        $this->assertEquals($collection->getBrokenLinks()->count(),2);
+    }
 
  
         /**
          * test filtering links callback
          */
-    public function testfilterCallback()
+    public function testfilterCallbackForSubdomain()
     {
         $logger = new Logger('crawler logger');
         $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
@@ -198,7 +214,7 @@ class CrawlerTest extends TestCase
         /**
          * test filtering links callback 2
          */
-    public function testfilterCallback2()
+    public function testfilterCallbackForUrlPattern()
     {
         $logger = new Logger('crawler logger');
         $logger->pushHandler(new StreamHandler(sys_get_temp_dir().'/crawler.log'));
@@ -442,35 +458,5 @@ class CrawlerTest extends TestCase
         
         $this->assertEquals('http://zrashwani.com/', $links[self::$baseTestUrl.$filePath]['metaInfo']['canonicalLink']);
     }    
-    
-    /**
-     * data provide for checking status code if crawlable
-     * @return array data for check crawlable status code
-     */
-    public function crawlableStatusCodeProvider(){
-       return [
-           [301, true],
-           [302, true],
-           [200, true],
-           [201, true],
-           [404, false],
-           [403, false],
-           [500, false],
-           [503, false],
-       ];
-    }
-    
-    /**
-     * @dataProvider crawlableStatusCodeProvider
-     * @param int $statusCode
-     * @param bool $expected
-     */
-    public function testCrawlableStatusCode($statusCode, $expected){
-        $crawler = new Crawler('http://example.com');
-        $method = new \ReflectionMethod(Crawler::class, 'checkCrawlableStatusCode');
-        $method->setAccessible(true);
         
-        $this->assertEquals($method->invoke($crawler, $statusCode), $expected);
-    }
-    
 }

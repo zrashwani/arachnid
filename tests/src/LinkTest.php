@@ -189,4 +189,32 @@ class LinkTest extends TestCase
         ];
     }
       
+    /**
+     * data provide for checking status code if crawlable
+     * @return array data for check crawlable status code
+     */
+    public function crawlableStatusCodeProvider(){
+       return [
+           [301, true],
+           [302, true],
+           [200, true],
+           [201, true],
+           [404, false],
+           [403, false],
+           [500, false],
+           [503, false],
+       ];
+    }
+    
+    /**
+     * @dataProvider crawlableStatusCodeProvider
+     * @param int $statusCode
+     * @param bool $expected
+     */
+    public function testCrawlableStatusCode($statusCode, $expected){
+        $link = new Link('http://example.com');
+        $link->setStatusCode($statusCode);
+        
+        $this->assertEquals($link->checkCrawlableStatusCode(), $expected);
+    }    
 }

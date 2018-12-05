@@ -10,6 +10,10 @@ use GuzzleHttp\Psr7\Uri as GuzzleUri;
  */
 class Link extends GuzzleUri
 {
+    CONST STATUS_NOT_VISITED = 1;
+    CONST STATUS_TRYING_TO_VISIT = 2;
+    CONST STATUS_VISITED = 3;
+    
     /**
      * original url
      * @var string
@@ -97,11 +101,16 @@ class Link extends GuzzleUri
     }
     
     public function isVisited(){
-        return $this->isVisited;
+        return $this->isVisited == self::STATUS_VISITED;
+    }
+
+    public function setAsTryingToVisit(){
+        $this->isVisited = self::STATUS_TRYING_TO_VISIT;
+        return $this;
     }
     
     public function setAsVisited(){
-        $this->isVisited = true;
+        $this->isVisited = self::STATUS_VISITED;
         return $this;
     }
     
@@ -247,6 +256,21 @@ class Link extends GuzzleUri
         
         return $headersArr;
     }
+    
+    
+    /**
+     * check if specific status code can be crawled or not
+     * @param int $statusCode
+     * @return boolean
+     */
+    public function checkCrawlableStatusCode(): bool{
+       $statusCode = $this->getStatusCode(); 
+       if( $statusCode >= 400 && $statusCode <= 599 ){
+           return false;
+       }else{
+           return true;
+       }
+    }    
     
     /**
      * remove dots from uri

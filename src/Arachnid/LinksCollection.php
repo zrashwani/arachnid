@@ -38,7 +38,8 @@ class LinksCollection extends Collection{
      */
     public function getBrokenLinks($showSummaryInfo = false){
         $brokenLinks = $this->filter(function(Link $link){
-            return !($link->getStatusCode() >= 200 && $link->getStatusCode() <= 299);
+            return $link->isVisited() !== Link::STATUS_NOT_VISITED &&  //exclude links that are not visited
+                    $link->checkCrawlableStatusCode()===false;
         });
         
         return $showSummaryInfo===false? //retrieve summary or details of links
