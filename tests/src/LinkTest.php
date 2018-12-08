@@ -128,8 +128,7 @@ class LinkTest extends TestCase
         ['', false],
         ['#title', false],
         ['tel:565645654', false],
-        ['mailto: zaid@wewebit.com', false],
-        ['/sample-doc.pdf', false],
+        ['mailto: zaid@wewebit.com', false],        
         ['skype:+44020444444?call', false],    
         ['/test.html', true],
         ];
