@@ -191,8 +191,7 @@ class Link extends GuzzleUri
             '@^mailto\:.*@i',
             '@^tel\:.*@i',
             '@^skype\:.*@i',
-            '@^fax\:.*@i',
-            '@.*(\.pdf)$@i'
+            '@^fax\:.*@i',            
         );
 
         foreach ($stop_links as $ptrn) {
@@ -251,7 +250,7 @@ class Link extends GuzzleUri
             $headersArr['status'] = trim(substr($statusStmt, $statusIndex));
         }
         if(is_array($headersArr['content-type']) === true){
-            $headersArr['content-type'] = current($headersArr['content-type']);
+            $headersArr['content-type'] = end($headersArr['content-type']);
         }
         
         return $headersArr;
