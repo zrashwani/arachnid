@@ -239,7 +239,13 @@ class Link extends GuzzleUri
      * @return array
      */
     public function extractHeaders(){
-        $headersArrRaw = get_headers($this->getAbsoluteUrl(), 1); 
+        $absoluteUrl = $this->getAbsoluteUrl();
+        $headersArrRaw = get_headers($absoluteUrl, 1); 
+        
+        if($headersArrRaw === false){
+            throw new \Exception("cannot get headers for {$absoluteUrl}");
+        }
+        
         $headersArr = array_change_key_case($headersArrRaw, CASE_LOWER);        
         if(isset($headersArr[0]) === true && strpos($headersArr[0], 'HTTP/') !== false){
             $statusStmt = $headersArr[0];
