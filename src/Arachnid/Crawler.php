@@ -210,27 +210,25 @@ class Crawler
         }
         
         try {
-            $this->log(LogLevel::INFO, 'crawling '.$hash. ' in process', ['depth'=> $depth]);
-            $client = $this->getScrapClient();                 
-            $crawler = $client->requestPage($linkObj->getAbsoluteUrl()); 
+            $this->log(LogLevel::INFO, 'crawling '.$hash. ' in process', ['depth'=> $depth]);  
             
-            $headers = $linkObj->extractHeaders();
-            
+            $headers = $linkObj->extractHeaders();            
             $statusCode =  $headers['status-code'];
             $linkObj->setStatusCode($statusCode);
             $linkObj->setStatus($headers['status']); 
             $linkObj->setAsTryingToVisit();
-            
-            if ($linkObj->checkCrawlableStatusCode() === true) {
+                        
+            if ($linkObj->checkCrawlableStatusCode() === true) {           
                 $contentType = $headers['content-type'];
                 $linkObj->setContentType($contentType);
 
                 //traverse children in case the response in HTML document only
                 if (strpos($contentType, 'text/html') !== false) {
-                    $this->extractMetaInfo($crawler, $hash);
-
                     $childLinks = array();                    
-                    if ($linkObj->isExternal()===false) {                        
+                    if ($linkObj->isExternal() === false) {         
+                        $client = $this->getScrapClient();                 
+                        $crawler = $client->requestPage($linkObj->getAbsoluteUrl()); 
+                        $this->extractMetaInfo($crawler, $hash);
                         $childLinks = $this->extractLinksInfo($crawler, $linkObj);
                     }                    
                     $linkObj->setAsVisited();    
@@ -250,7 +248,7 @@ class Crawler
         } catch (\Exception $e) {                        
             if ($filterLinks && $filterLinks($linkObj) === false) {
                 $this->log(LogLevel::INFO, $linkObj.' skipping broken link not matching filter criteria');
-            } else {                
+            } else {                                
                 $linkObj->setStatusCode(500);
                 $linkObj->setErrorInfo($e->getMessage());
                 $this->log(LogLevel::ERROR, $hash.' broken link detected code='.$e->getCode());
