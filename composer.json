@@ -17,6 +17,7 @@
     ],
     "require": {
         "php": ">=7.1.0",
+	"ext-SPL": "*",
         "monolog/monolog": "^1.22",
         "illuminate/support": "^5.4",
         "guzzlehttp/guzzle": "6.3",

@@ -36,8 +36,8 @@ class CrawlerTest extends TestCase
         $crawler = new Crawler($url, 1);
         $crawler->traverse();
         $links = $crawler->getLinks();        
-        $this->assertEquals(get_class($crawler->getScrapClient()), Adapters\GoutteAdapter::class);
-        $this->assertEquals(get_class($crawler->getScrapClient()->getClient()), \Goutte\Client::class);
+        $this->assertEquals(Adapters\GoutteAdapter::class, get_class($crawler->getScrapClient()));
+        $this->assertEquals(\Goutte\Client::class, get_class($crawler->getScrapClient()->getClient()));
 
         /*@var $link Link */
         $mainLink = $links[$url];
@@ -53,13 +53,16 @@ class CrawlerTest extends TestCase
     public function testSetScrapClient()
     {
         $crawler = new Crawler('index', 1);
-        $crawler->setScrapClient(CrawlingFactory::create(CrawlingFactory::TYPE_HEADLESS_BROWSER));
-        $this->assertInstanceOf(PantherClient::class,$crawler->getScrapClient()->getClient());
+        $crawler->setScrapClient(CrawlingFactory::create(
+                CrawlingFactory::TYPE_HEADLESS_BROWSER));
+        $this->assertInstanceOf(PantherClient::class, 
+                $crawler->getScrapClient()->getClient());
         
         //test enable headless browser mode function
         $crawler2 = new Crawler('index',1);
         $crawler2->enableHeadlessBrowserMode();
-        $this->assertInstanceOf(PantherClient::class,$crawler->getScrapClient()->getClient());
+        $this->assertInstanceOf(PantherClient::class, 
+                $crawler->getScrapClient()->getClient());
     }
 
     /**
@@ -74,9 +77,12 @@ class CrawlerTest extends TestCase
         $this->assertArrayHasKey(self::$baseTestUrl.'/test.html', $links);
         
         $mainLink = $links[self::$baseTestUrl.'/test.html'];        
-        $this->assertInstanceOf(Link::class, $mainLink,'entry must be instance of Link class');
-        $this->assertEquals($mainLink->getStatusCode(), 404,'status code must be 404, given: '.$mainLink->getStatusCode());
-        $this->assertEquals($mainLink->getStatus(), 'Not Found','status code must be 404, given: '.$mainLink->getStatusCode());
+        $this->assertInstanceOf(Link::class, $mainLink, 
+                'entry must be instance of Link class');
+        $this->assertEquals($mainLink->getStatusCode(), 404, 
+                'status code must be 404, given: '.$mainLink->getStatusCode());
+        $this->assertEquals($mainLink->getStatus(), 'Not Found', 
+                'status code must be 404, given: '.$mainLink->getStatusCode());
     }
 
     /**
@@ -90,7 +96,8 @@ class CrawlerTest extends TestCase
      
         $links = $crawler->getLinks();
      
-        $this->assertEquals($links[$filePath]->getStatusCode(), 200, $filePath.' shall be 200 ok');                
+        $this->assertEquals(200, $links[$filePath]->getStatusCode(), 
+                $filePath.' shall be 200 ok');                
         $this->assertEquals(7, count($links)); //7 after normalizing fragments
     }
 
@@ -103,8 +110,7 @@ class CrawlerTest extends TestCase
         $crawler = new Crawler($filePath, 2); 
         $crawler->traverse();
         $links = $crawler->getLinks();
-        
-        $this->assertEquals($links[$filePath]->getStatusCode(), 200);
+        $this->assertEquals(200, $links[$filePath]->getStatusCode());
         $this->assertCount(12, $links);
     }
 
@@ -123,7 +129,7 @@ class CrawlerTest extends TestCase
 
         $links = $crawler->getLinks();
 
-        $this->assertEquals($links[$filePath]->getStatusCode(), 200);
+        $this->assertEquals(200, $links[$filePath]->getStatusCode());
         $this->greaterThan(8, count($links));
         
         $this->assertArrayHasKey('http://facebook.com', $links);
@@ -145,10 +151,10 @@ class CrawlerTest extends TestCase
         $crawler->traverse();
 
         $links = $crawler->getLinks();                
-        $this->assertEquals($links[$filePath]->getStatusCode(), 404);
+        $this->assertEquals(404, $links[$filePath]->getStatusCode());
         
         $collection = new LinksCollection($links);
-        $this->assertEquals($collection->getBrokenLinks()->count(),1);
+        $this->assertEquals(1, $collection->getBrokenLinks()->count());
     }
         
     /**
@@ -161,10 +167,10 @@ class CrawlerTest extends TestCase
         $crawler->traverse();
 
         $links = $crawler->getLinks();          
-        $this->assertEquals($links[$filePath]->getStatusCode(), 200);
+        $this->assertEquals(200, $links[$filePath]->getStatusCode());
         
         $collection = new LinksCollection($links);
-        $this->assertEquals($collection->getBrokenLinks()->count(),2);
+        $this->assertEquals(2, $collection->getBrokenLinks()->count());
     }
 
  
@@ -185,7 +191,7 @@ class CrawlerTest extends TestCase
                     ->traverse()
                     ->getLinks();
             
-        foreach ($links as $uri => $linkObj) {
+        foreach ($links as $linkObj) {
             /*@var $linkObj Link*/
             $this->assertRegExp('/.*\/blog.*$/u', $linkObj->getAbsoluteUrl());
         }
@@ -227,7 +233,7 @@ class CrawlerTest extends TestCase
            })->traverse();
         $links = $client->getLinks();
         
-        $this->assertGreaterThan(2,count($links));
+        $this->assertGreaterThan(2, count($links));
         foreach ($links as $linkObj) {
             /*@var $linkObj Link*/
             $this->assertNotRegExp('/.*dont\-visit.*/U', $linkObj->getAbsoluteUrl());
@@ -246,11 +252,11 @@ class CrawlerTest extends TestCase
                 
         /*@var $mainLink Link*/
         $mainLink = $links[$filePath];
-        $this->assertEquals($mainLink->getStatusCode(), 200, $filePath.' shall be 200 ok');
+        $this->assertEquals(200, $mainLink->getStatusCode(), $filePath.' shall be 200 ok');
         
-        $this->assertEquals($mainLink->getMetaInfo('title'), 'Main Page');
-        $this->assertEquals($mainLink->getMetaInfo('metaDescription'), 'meta description for main page');
-        $this->assertEquals($mainLink->getMetaInfo('metaKeywords'), 'keywords1, keywords2');
+        $this->assertEquals('Main Page', $mainLink->getMetaInfo('title'));
+        $this->assertEquals('meta description for main page', $mainLink->getMetaInfo('metaDescription'));
+        $this->assertEquals('keywords1, keywords2', $mainLink->getMetaInfo('metaKeywords'));
     }
     
     /**
@@ -372,7 +378,7 @@ class CrawlerTest extends TestCase
         $links = $crawler->traverse()
                 ->getLinks();
         
-        $this->assertEquals(500,$links[$nonFoundUrl]->getStatusCode());
+        $this->assertEquals(404, $links[$nonFoundUrl]->getStatusCode());
     }
     
     public function testImageLink(){
@@ -427,7 +433,7 @@ class CrawlerTest extends TestCase
         $links = $crawler->enableHeadlessBrowserMode()
                 ->traverse()
                 ->getLinksArray();
-        $this->assertEquals($links[$url]['statusCode'], 404);
+        $this->assertEquals(404, $links[$url]['statusCode']);
     }
     
     public function testJavascriptContentType(){

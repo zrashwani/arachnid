@@ -32,8 +32,7 @@ class LinksCollectionTest extends TestCase
     
     protected function getSampleLinks(){
         $links = array();
-        $links['/test'] = (new Link('/test',new Link('http://test.com/')))
-                           ->setAsVisited()
+        $links['/test'] = (new Link('/test',new Link('http://test.com/')))                           
                            ->setStatusCode(200)
                            ->addMetaInfo('title', 'Test Link')
                            ->addMetaInfo('h1_count', 1)

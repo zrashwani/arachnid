@@ -14,7 +14,7 @@ class LinkTest extends TestCase
      */
     public function testGetAbsoluteUrl($baseUrl, $nodeUrl, $expectedUrl)
     {
-        $link = new Link($nodeUrl,new Link($baseUrl));
+        $link = new Link($nodeUrl, new Link($baseUrl));
         $this->assertEquals($expectedUrl, $link->getAbsoluteUrl());
     }
 
@@ -90,6 +90,10 @@ class LinkTest extends TestCase
                 '../../links/index.html',
                 'http://toastytech.com/links/index.html',
             ],
+            [ 'http://127.0.0.1:9001/level1-1.html', 
+              'index.html',
+              'http://127.0.0.1:9001/index.html'
+            ]
         ];
     }
         
