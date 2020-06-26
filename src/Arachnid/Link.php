@@ -2,6 +2,7 @@
 
 namespace Arachnid;
 use GuzzleHttp\Psr7\Uri as GuzzleUri;
+use GuzzleHttp\Psr7\UriResolver;
 
 
 /**
@@ -9,11 +10,7 @@ use GuzzleHttp\Psr7\Uri as GuzzleUri;
  *
  */
 class Link extends GuzzleUri
-{
-    CONST STATUS_NOT_VISITED = 1;
-    CONST STATUS_TRYING_TO_VISIT = 2;
-    CONST STATUS_VISITED = 3;
-    
+{    
     /**
      * original url
      * @var string
@@ -36,20 +33,24 @@ class Link extends GuzzleUri
     
     private $crawlDepth;
     
-    private $isVisited = false;
-    
     private $shouldVisit = true;
     
     private $errorInfo;
-    
-    public function __construct($uri = '', Link $parentLink = null){
+       
+    public function __construct($uri = '', $parentLink = null){        
         $this->originalUrl = $uri;
         $this->parentLink = $parentLink;
-        if(strpos($this->originalUrl,"//") ===0 
+        if(strpos($this->originalUrl,"//") === 0 
                 && $this->parentLink !== null){ //uri starts with "//"
             $uri = $this->parentLink->getScheme().":".$uri;
         }
-        parent::__construct($uri);
+        $this->crawlDepth = $this->parentLink != null ? 
+                $this->parentLink->getCrawlDepth() + 1 : 0;
+        parent::__construct($uri);        
+    }
+    
+    public function getParentLink() {
+        return $this->parentLink;
     }
     
     public function setStatusCode($statusCode){
@@ -79,13 +80,8 @@ class Link extends GuzzleUri
         return $this->contentType;
     }
     
-    public function setCrawlDepth($depth){
-        $this->crawlDepth = $depth;
-        return $this;
-    }
-    
     public function getCrawlDepth(){
-        return $this->crawlDepth;
+        return $this->crawlDepth != null ? $this->crawlDepth : 0;
     }
     
     public function setErrorInfo($errorInfo){
@@ -98,20 +94,6 @@ class Link extends GuzzleUri
     
     public function getOriginalUrl(){
         return $this->originalUrl;
-    }
-    
-    public function isVisited(){
-        return $this->isVisited == self::STATUS_VISITED;
-    }
-
-    public function setAsTryingToVisit(){
-        $this->isVisited = self::STATUS_TRYING_TO_VISIT;
-        return $this;
-    }
-    
-    public function setAsVisited(){
-        $this->isVisited = self::STATUS_VISITED;
-        return $this;
     }
     
     public function setAsShouldVisit($value=true){
@@ -153,12 +135,12 @@ class Link extends GuzzleUri
      */
     public function getAbsoluteUrl($withFragment=true)
     {              
-        if($this->isCrawlable() === false && empty($this->getFragment())){
+        if ($this->isCrawlable() === false && empty($this->getFragment())) {
             $absolutePath = $this->getOriginalUrl();
-        }else{            
-            if($this->parentLink !==null){
-                $newUri = \GuzzleHttp\Psr7\UriResolver::resolve($this->parentLink,$this);
-            }else{
+        } else {            
+            if ($this->parentLink !== null) {
+                $newUri = UriResolver::resolve($this->parentLink, $this);
+            } else {
                 $newUri = $this;
             }
             
@@ -168,7 +150,7 @@ class Link extends GuzzleUri
                 $newUri->getPath(),
                 $newUri->getQuery(),
                 $withFragment===true?$this->getFragment():""
-            );
+            );           
         }
         
         return $absolutePath;
@@ -216,8 +198,8 @@ class Link extends GuzzleUri
         }
                     
         $isExternal = $this->getHost() !== "" && 
-                    ($this->getHost() != $parentLink->getHost());
-        
+                    ($this->getHost() != $parentLink->getHost());       
+
         return $isExternal;
     }    
     
@@ -233,35 +215,6 @@ class Link extends GuzzleUri
     public function __toString() {
         return $this->originalUrl;
     }
-    
-    /**
-     * extract headers array for the link url
-     * @return array
-     */
-    public function extractHeaders(){
-        $absoluteUrl = $this->getAbsoluteUrl();
-        $headersArrRaw = get_headers($absoluteUrl, 1); 
-        
-        if($headersArrRaw === false){
-            throw new \Exception("cannot get headers for {$absoluteUrl}");
-        }
-        
-        $headersArr = array_change_key_case($headersArrRaw, CASE_LOWER);        
-        if(isset($headersArr[0]) === true && strpos($headersArr[0], 'HTTP/') !== false){
-            $statusStmt = $headersArr[0];
-            $statusParts = explode(' ', $statusStmt);
-            $headersArr['status-code'] = $statusParts[1];
-            
-            $statusIndex = strrpos($statusStmt, $statusParts[1])+ strlen($statusParts[1])+1;
-            $headersArr['status'] = trim(substr($statusStmt, $statusIndex));
-        }
-        if(is_array($headersArr['content-type']) === true){
-            $headersArr['content-type'] = end($headersArr['content-type']);
-        }
-        
-        return $headersArr;
-    }
-    
     
     /**
      * check if specific status code can be crawled or not
@@ -282,12 +235,12 @@ class Link extends GuzzleUri
      * @return string
      */
     protected function removeDotsFromPath(){        
-        if($this->parentLink !==null){
-            $newUri = \GuzzleHttp\Psr7\UriResolver::resolve($this->parentLink,$this);
-        }else{
+        if ($this->parentLink !== null) {
+            $newUri = UriResolver::resolve($this->parentLink, $this);
+        } else {
             $newUri = $this;
         }
-        $finalPath = \GuzzleHttp\Psr7\UriResolver::removeDotSegments($newUri->getPath());
+        $finalPath = UriResolver::removeDotSegments($newUri->getPath());
         
         return $finalPath;
     }
