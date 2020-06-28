@@ -19,7 +19,7 @@ before_script:
     - pip install --user codecov
 
 script:
-    - phpunit -c phpunit.xml --coverage-clover=coverage.xml
+    - ./vendor/bin/phpunit -c phpunit.xml --coverage-clover=coverage.xml
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
