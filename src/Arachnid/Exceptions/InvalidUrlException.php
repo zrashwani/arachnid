@@ -2,7 +2,6 @@
 
 namespace Arachnid\Exceptions;
 
-class InvalidUrlException extends \RuntimeException {
-    
+class InvalidUrlException extends \RuntimeException
+{
 }
-

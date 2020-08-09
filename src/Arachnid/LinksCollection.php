@@ -2,16 +2,17 @@
 
 namespace Arachnid;
 
-use Illuminate\Support\Collection;
+use Tightenco\Collect\Support\Collection;
 use Arachnid\Link;
 
 /**
  * LinksCollection
  * class to get simple statistics about links
  */
-class LinksCollection extends Collection{
-    
-    public function __construct($items = array()) {
+class LinksCollection extends Collection
+{
+    public function __construct($items = array())
+    {
         parent::__construct($items);
     }
     
@@ -20,10 +21,11 @@ class LinksCollection extends Collection{
      * @param int $depth
      * @return LinksCollection
      */
-    public function filterByDepth($depth){
-        return $this->filter(function(Link $link) use($depth){
+    public function filterByDepth($depth)
+    {
+        return $this->filter(function (Link $link) use ($depth) {
             return $link->getCrawlDepth() == $depth;
-        })->map(function(Link $link){
+        })->map(function (Link $link) {
             return [
                 'source_page' => $link->getParentUrl(),
                 'link' => $link->getAbsoluteUrl(),
@@ -36,35 +38,36 @@ class LinksCollection extends Collection{
      * @param bool $showSummaryInfo if set to true, it will return only status_code and source page
      * @return LinksCollection
      */
-    public function getBrokenLinks($showSummaryInfo = false){
-        $brokenLinks = $this->filter(function(Link $link){
+    public function getBrokenLinks($showSummaryInfo = false)
+    {
+        $brokenLinks = $this->filter(function (Link $link) {
             return !$link->shouldNotVisit() &&  //exclude links that are not visited
                     $link->checkCrawlableStatusCode()===false;
         });
         
         return $showSummaryInfo===false? //retrieve summary or details of links
                 $brokenLinks:
-                $brokenLinks->map(function(Link $link){
-            return [
+                $brokenLinks->map(function (Link $link) {
+                    return [
                 'source_page' => $link->getParentUrl(),
                 'link' => $link->getAbsoluteUrl(),
                 'status_code' => $link->getStatusCode(),
             ];
-        });
-        
+                });
     }
     
     /**
      * getting links grouped by depth of first traversing
      * @return LinksCollection
      */
-    public function groupLinksByDepth(){
+    public function groupLinksByDepth()
+    {
         $final_items = [];
-        $this->each(function(Link $linkObj, $uri) use(&$final_items){
+        $this->each(function (Link $linkObj, $uri) use (&$final_items) {
             $final_items[$linkObj->getCrawlDepth()][$uri] = [
                'link'  => $linkObj->getAbsoluteUrl(),
                'source_page' => $linkObj->getParentUrl(),
-            ];          
+            ];
         });
         
         ksort($final_items);
@@ -76,22 +79,24 @@ class LinksCollection extends Collection{
      * [ "source_page1" => [children links], "source_page2" => [children_links], ...]
      * @return LinksCollection
      */
-    public function groupLinksGroupedBySource(){
-        return $this->map(function(Link $linkObj){
-                        return 
+    public function groupLinksGroupedBySource()
+    {
+        return $this->map(function (Link $linkObj) {
+            return
                             ['link' => $linkObj->getAbsoluteUrl(),
-                             'source_link' => $linkObj->getParentUrl()];                                
-                    })
+                             'source_link' => $linkObj->getParentUrl()];
+        })
                     ->unique('link')
-                    ->groupBy('source_link');        
+                    ->groupBy('source_link');
     }
     
     /**
      * getting external links found in collection
      * @return LinksCollection
      */
-    public function getExternalLinks(){
-        return $this->filter(function(Link $linkObj){
+    public function getExternalLinks()
+    {
+        return $this->filter(function (Link $linkObj) {
             return $linkObj->isExternal();
         });
     }

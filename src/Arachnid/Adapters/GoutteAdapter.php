@@ -1,10 +1,13 @@
 <?php
 
 namespace Arachnid\Adapters;
+
 use Symfony\Component\DomCrawler\Crawler;
 use Goutte\Client as GoutteClient;
+use Symfony\Component\HttpClient\HttpClient;
 
-class GoutteAdapter implements CrawlingAdapterInterface{
+class GoutteAdapter implements CrawlingAdapterInterface
+{
     
     /**
      * guzzle client
@@ -13,41 +16,21 @@ class GoutteAdapter implements CrawlingAdapterInterface{
     private $client;
     
     
-    public function __construct($options) {
-        $client = new GoutteClient();
+    public function __construct($options)
+    {
+        $httpClient = HttpClient::create($options);
+        $client = new GoutteClient($httpClient);
         $client->followRedirects();
-        $guzzleClient = new \GuzzleHttp\Client($this->prepareOptions($options));
-        $client->setClient($guzzleClient);
         $this->client = $client;
     }
     
-    public function requestPage($url): Crawler {
-        return $this->client->request('GET', $url);      
+    public function requestPage($url): Crawler
+    {
+        return $this->client->request('GET', $url);
     }
     
-
-    /**
-     * get default configuration options for guzzle
-     * @return array
-     */
-    protected function prepareOptions(array $options = [])
+    public function getClient()
     {
-        $cookieName = time()."_".substr(md5(microtime()), 0, 5).".txt";
-                
-        $defaultConfig = array(
-            'curl' => array(
-                CURLOPT_COOKIEJAR      => $cookieName,
-                CURLOPT_COOKIEFILE     => $cookieName,
-            ),
-        );
-        $configOptions = array_merge_recursive($options, $defaultConfig);
-        
-        return $configOptions;
-    }
-
-    public function getClient() {
         return $this->client;
     }
-
 }
-

@@ -1,6 +1,8 @@
 language: php
 addons:
   chrome: stable
+env:
+    - PANTHER_CHROME_DRIVER_BINARY=/usr/bin/chromedriver 
   
 php:
     - 7.1
