@@ -217,7 +217,7 @@ class CrawlerTest extends TestCase
             
         foreach ($links as $linkObj) {
             /*@var $linkObj Link*/
-            $this->assertMatchesRegularExpression('/.*\/blog.*$/u', $linkObj->getAbsoluteUrl());
+            $this->assertTrue(preg_match('/.*\/blog.*$/u', $linkObj->getAbsoluteUrl()) === 1);
         }
         
         $testHandler = new \Monolog\Handler\TestHandler();
@@ -259,7 +259,7 @@ class CrawlerTest extends TestCase
         $this->assertGreaterThan(2, count($links));
         foreach ($links as $linkObj) {
             /*@var $linkObj Link*/
-            $this->assertDoesNotMatchRegularExpression('/.*dont\-visit.*/U', $linkObj->getAbsoluteUrl());
+            $this->assertFalse(preg_match('/.*dont\-visit.*/U', $linkObj->getAbsoluteUrl()) === 1);
         }
     }
         
