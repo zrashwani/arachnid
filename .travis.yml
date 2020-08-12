@@ -1,8 +1,6 @@
 language: php
 addons:
   chrome: stable
-env:
-    - PANTHER_CHROME_DRIVER_BINARY=/usr/bin/chromedriver 
   
 php:
     - 7.1
@@ -18,9 +16,6 @@ matrix:
 cache:
   directories:
     - $HOME/.composer/cache
-
-before_install:
-  - google-chrome-stable --headless --disable-gpu --remote-debugging-port=9222 http://localhost &
   
 before_script:
     - cp phpunit.xml.dist phpunit.xml
@@ -29,7 +24,7 @@ before_script:
     - pip install --user codecov
 
 script:
-    - ./vendor/bin/phpunit -c phpunit.xml --coverage-clover=coverage.xml
+    - PANTHER_CHROME_DRIVER_BINARY=/usr/bin/chromedriver ./vendor/bin/phpunit -c phpunit.xml --coverage-clover=coverage.xml
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
