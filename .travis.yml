@@ -15,6 +15,13 @@ matrix:
     allow_failures:
         - php: hhvm
 
+cache:
+  directories:
+    - $HOME/.composer/cache
+
+before_install:
+  - google-chrome-stable --headless --disable-gpu --remote-debugging-port=9222 http://localhost &
+  
 before_script:
     - cp phpunit.xml.dist phpunit.xml
     - composer self-update
