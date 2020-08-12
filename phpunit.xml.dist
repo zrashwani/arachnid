@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="./vendor/autoload.php" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd">
-  <coverage processUncoveredFiles="true">
-    <include>
-      <directory>src</directory>
-    </include>
-    <exclude>
-      <directory>tests</directory>
-      <directory>vendor</directory>
-    </exclude>
-  </coverage>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+         bootstrap="./vendor/autoload.php" 
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd"
+         colors="true"
+>
+  <filter>
+    <whitelist processUncoveredFilesFromWhitelist="true">
+      <directory suffix=".php">src</directory>
+      <exclude>
+        <directory>tests</directory>
+        <directory>vendor</directory>
+      </exclude>
+    </whitelist>
+  </filter>
   <testsuites>
     <testsuite name="arachnid">
       <directory suffix="Test.php">tests</directory>
