@@ -378,11 +378,15 @@ class CrawlerTest extends TestCase
         $links = $crawler->enableHeadlessBrowserMode()
                 ->traverse()
                 ->getLinks();
-        $this->assertArrayHasKey(self::$baseTestUrl.'/testWithImage.html', $links);
-        $this->assertArrayHasKey(self::$baseTestUrl.'/images/php-large.png', $links);
+        $basePageLink = self::$baseTestUrl.$filePath;
+        $this->assertArrayHasKey($basePageLink, $links);
+        $this->assertEmpty($links[$basePageLink]->getErrorInfo(), 
+                "Error info not empty, actual ".$links[$basePageLink]->getErrorInfo());
         
+        $bigImageLink = self::$baseTestUrl.'/images/php-large.png';
+        $this->assertArrayHasKey($bigImageLink, $links);
         /*@var $imageLink Link*/
-        $imageLink = $links[self::$baseTestUrl.'/images/php-large.png'];
+        $imageLink = $links[$bigImageLink];
         $this->assertEquals($imageLink->getContentType(), 'image/png');
     }
     
