@@ -58,21 +58,18 @@ or creating Goutte scrapper with desired options:
 
 ```php
     <?php
-        //third parameter is the options used to configure guzzle client
-        $crawler = new \Arachnid\Crawler('http://github.com',2, 
-                                 ['auth'=>array('username', 'password')]);
+        //third parameter is the options used to configure http client
+        $crawler = new \Arachnid\Crawler('http://github.com', 2, 
+                                 ['auth_basic' => array('username', 'password')]);
            
         //or using separate method `setCrawlerOptions`
         $options = array(
-            'curl' => array(
-                CURLOPT_SSL_VERIFYHOST => false,
-                CURLOPT_SSL_VERIFYPEER => false,
-            ),
+            'verify_host' => false,
+            'verify_peer' => false,
             'timeout' => 30,
-            'connect_timeout' => 30,
         );
                         
-        $scrapperClient = \Arachnid\Adapters\CrawlingFactory::create(\Arachnid\Adapters\CrawlingFactory::TYPE_GOUTTE,$options);
+        $scrapperClient = \Arachnid\Adapters\CrawlingFactory::create(\Arachnid\Adapters\CrawlingFactory::TYPE_HTTP_CLIENT, $options);
         $crawler->setScrapClient($scrapperClient);
 ```
 

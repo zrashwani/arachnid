@@ -1,22 +1,28 @@
 <?php
 
 namespace Arachnid\Adapters;
+
 use Arachnid\Adapters\CrawlingAdapterInterface;
 
-class CrawlingFactory{
+class CrawlingFactory
+{
+    const TYPE_HEADLESS_BROWSER = 1;
+    const TYPE_HTTP_CLIENT = 2;
+    /**
+     * @deprecated since version 2.1.0
+     */
+    const TYPE_GOUTTE = 2;
     
-    CONST TYPE_HEADLESS_BROWSER = 1;
-    CONST TYPE_GOUTTE = 2;
-    
-    public static function create(string $type, array $options = []): CrawlingAdapterInterface{
-        
+    public static function create(string $type, array $options = []): CrawlingAdapterInterface
+    {
         $client = null;
-        switch($type){
+        switch ($type) {
             case self::TYPE_HEADLESS_BROWSER:
                 $client = new PantherChromeAdapter($options);
                 break;
             
             case self::TYPE_GOUTTE:
+            case self::TYPE_HTTP_CLIENT:    
                 $client = new GoutteAdapter($options);
                 break;
             

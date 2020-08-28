@@ -2,26 +2,34 @@ language: php
 addons:
   chrome: stable
   
-php:
-    - 7.1
-    - 7.2
-    - 7.3
-    - hhvm
+jobs:
+  include:
+    - php: '7.1'
+    - php: '7.2'
+    - php: '7.3'
+    - php: '7.4'
 
-matrix:
-    allow_failures:
-        - php: hhvm
+cache:
+  directories:
+    - $HOME/.composer/cache
 
 before_script:
+  - phpenv config-rm xdebug.ini
+
+install:
+  - composer update
+     
+  
+before_script: 
     - cp phpunit.xml.dist phpunit.xml
     - composer self-update
     - composer install --dev
     - pip install --user codecov
+    - cd ./vendor/symfony/panther/chromedriver-bin && bash update.sh
+    - cd ../../../..
 
 script:
     - ./vendor/bin/phpunit -c phpunit.xml --coverage-clover=coverage.xml
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
-
-dist: trusty

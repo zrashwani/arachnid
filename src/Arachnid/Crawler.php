@@ -29,8 +29,8 @@ use Arachnid\Exceptions\InvalidUrlException;
  * @author  Zeid Rashwani <http://zrashwani.com>
  * @version 1.0.4
  */
-class Crawler {
-
+class Crawler
+{
     const HTML_CONTENT_TYPE = 'text/html';
 
     /**
@@ -77,7 +77,7 @@ class Crawler {
 
     /**
      * configuration for scrapping client
-     * @var array 
+     * @var array
      */
     private $config;
 
@@ -93,7 +93,8 @@ class Crawler {
      * @param int    $maxDepth depth of links to be crawled
      * @param array  $config guzzle client extra options
      */
-    public function __construct($baseUrl, $maxDepth = 3, $config = []) {
+    public function __construct($baseUrl, $maxDepth = 3, $config = [])
+    {
         $this->baseUrl = new Link($baseUrl);
         $this->maxDepth = $maxDepth;
         $this->links = array();
@@ -105,7 +106,8 @@ class Crawler {
      * @param UriInterface $link
      * @return \Arachnid\Crawler
      */
-    public function traverse(Link $link = null) {
+    public function traverse(Link $link = null)
+    {
         if ($link === null) {
             $link = $this->baseUrl;
         }
@@ -115,19 +117,19 @@ class Crawler {
 
         while (!$this->linksToVisit->isEmpty()) {
             /* @var $currLink Link */
-            $currLink = $this->linksToVisit->dequeue();            
+            $currLink = $this->linksToVisit->dequeue();
             $currUrl = $currLink->getAbsoluteUrl(false);
-            if (isset($this->visitedLinks[$currUrl]) === true){
+            if (isset($this->visitedLinks[$currUrl]) === true) {
                 continue;
             }
-            if($currLink->getCrawlDepth() >= $this->maxDepth && 
+            if ($currLink->getCrawlDepth() >= $this->maxDepth &&
                $currLink->isCrawlable()) {
-               //if link is same of exceeding max crawl depth, just check
-               //the headers (to see if it is broken or not) and don't traverse
-               $this->fillHeaderInfo($currLink);
-               $currLink->setAsShouldVisit(false);
+                //if link is same of exceeding max crawl depth, just check
+                //the headers (to see if it is broken or not) and don't traverse
+                $this->fillHeaderInfo($currLink);
+                $currLink->setAsShouldVisit(false);
             } else {
-               $this->traverseSingle($currLink);
+                $this->traverseSingle($currLink);
             }
             $this->visitedLinks[$currUrl] = $currLink;
         }
@@ -139,7 +141,8 @@ class Crawler {
      * Get links (and related data) found by the crawler
      * @return array
      */
-    public function getLinks() {
+    public function getLinks()
+    {
         if ($this->filterCallback === null) {
             $links = $this->visitedLinks;
         } else {
@@ -156,7 +159,8 @@ class Crawler {
      * get links information as array
      * @return array
      */
-    public function getLinksArray($includeOnlyVisited = false) {
+    public function getLinksArray($includeOnlyVisited = false)
+    {
         $links = $this->getLinks();
 
         if ($includeOnlyVisited === true) {
@@ -166,7 +170,7 @@ class Crawler {
             });
         }
 
-        return array_map(function(Link $link) {
+        return array_map(function (Link $link) {
             return [
                 'fullUrl' => $link->getAbsoluteUrl(),
                 'uri' => $link->getPath(),
@@ -187,7 +191,8 @@ class Crawler {
      * @param Link $linkObj
      * @param int    $depth
      */
-    protected function traverseSingle(Link $linkObj) {
+    protected function traverseSingle(Link $linkObj)
+    {
         $depth = $linkObj->getCrawlDepth();
         $fullUrl = $linkObj->getAbsoluteUrl(false);
         $this->links[$fullUrl] = $linkObj;
@@ -212,7 +217,7 @@ class Crawler {
 
             $this->fillHeaderInfo($linkObj);
 
-            if ($linkObj->checkCrawlableStatusCode() === true) {              
+            if ($linkObj->checkCrawlableStatusCode() === true) {
                 $this->fillSingleLinkInfo($linkObj);
             }
         } catch (ClientException $e) {
@@ -239,12 +244,13 @@ class Crawler {
      * it will configure goutte client by default
      * @return CrawlingAdapterInterface
      */
-    public function getScrapClient() {
+    public function getScrapClient()
+    {
         if ($this->scrapClient === null) {
             if ($this->headlessBrowserEnabled === true) {
                 $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_HEADLESS_BROWSER, $this->config);
             } else {
-                $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_GOUTTE, $this->config);
+                $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_HTTP_CLIENT, $this->config);
             }
             $this->setScrapClient($scrapClient);
         }
@@ -255,7 +261,8 @@ class Crawler {
      * set custom scrap client
      * @param CrawlingAdapterInterface $client
      */
-    public function setScrapClient(CrawlingAdapterInterface $client) {
+    public function setScrapClient(CrawlingAdapterInterface $client)
+    {
         $this->scrapClient = $client;
     }
 
@@ -263,7 +270,8 @@ class Crawler {
      * enable headless browser by using chrome client in the background
      * @return $this
      */
-    public function enableHeadlessBrowserMode() {
+    public function enableHeadlessBrowserMode()
+    {
         $this->headlessBrowserEnabled = true;
         return $this;
     }
@@ -273,7 +281,8 @@ class Crawler {
      * @param \Closure $filterCallback
      * @return \Arachnid\Crawler
      */
-    public function filterLinks(\Closure $filterCallback) {
+    public function filterLinks(\Closure $filterCallback)
+    {
         $this->filterCallback = $filterCallback;
         return $this;
     }
@@ -283,17 +292,19 @@ class Crawler {
      * @param  \Symfony\Component\DomCrawler\Crawler $crawler
      * @param Link $pageLink
      */
-    public function extractLinksInfo(DomCrawler $crawler, Link $pageLink) {
-        $crawler->filter('a')->each(function (DomCrawler $node, $i)
-                use ($pageLink) {
+    public function extractLinksInfo(DomCrawler $crawler, Link $pageLink)
+    {
+        $crawler->filter('a')->each(function (DomCrawler $node, $i) use ($pageLink) {
             $nodeText = trim($node->html());
-            $href = $node->extract('href')[0];
-            if (empty($href) === true) {
+            $href = $node->extract(['href']);
+            if (count($href) == 0 || empty($href[0]) === true) {
                 return;
             }
-            $pageLinkClone = new Link($pageLink->getAbsoluteUrl(false), 
-                    $pageLink->getParentLink());
-            $nodeLink = new Link($href, $pageLinkClone);
+            $pageLinkClone = new Link(
+                $pageLink->getAbsoluteUrl(false),
+                $pageLink->getParentLink()
+            );
+            $nodeLink = new Link($href[0], $pageLinkClone);
             $nodeLink->addMetaInfo('linksText', $nodeText);
             if (!isset($this->visitedLinks[$nodeLink->getAbsoluteUrl(false)])) {
                 $this->linksToVisit->enqueue($nodeLink);
@@ -306,27 +317,30 @@ class Crawler {
      * @param $logger \Psr\Log\LoggerInterface
      * @return \Arachnid\Crawler
      */
-    public function setLogger($logger) {
+    public function setLogger($logger)
+    {
         $this->logger = $logger;
         return $this;
     }
     
-    protected function fillHeaderInfo(Link $linkObj) {
+    protected function fillHeaderInfo(Link $linkObj)
+    {
         try {
-           $headers = $this->extractHeaders($linkObj);
-           $statusCode = $headers['status-code'];
-           $linkObj->setStatusCode($statusCode);
-           $linkObj->setStatus($headers['status']);
-           if(isset($headers['content-type']) == true){
-             $linkObj->setContentType($headers['content-type']); 
-           } 
+            $headers = $this->extractHeaders($linkObj);
+            $statusCode = $headers['status-code'];
+            $linkObj->setStatusCode($statusCode);
+            $linkObj->setStatus($headers['status']);
+            if (isset($headers['content-type']) == true) {
+                $linkObj->setContentType($headers['content-type']);
+            }
         } catch (InvalidUrlException $ex) {
-           $linkObj->setStatusCode(404);
-           $linkObj->setStatus("Invalid URL");
+            $linkObj->setStatusCode(404);
+            $linkObj->setStatus("Invalid URL");
         }
-    } 
+    }
 
-    protected function fillSingleLinkInfo(Link $linkObj) {
+    protected function fillSingleLinkInfo(Link $linkObj)
+    {
         if (strpos($linkObj->getContentType(), Crawler::HTML_CONTENT_TYPE) !== false) {
             if ($linkObj->isExternal() === false) {
                 $client = $this->getScrapClient();
@@ -342,7 +356,8 @@ class Crawler {
      * @param DomCrawler $crawler
      * @param Link $currentLink
      */
-    protected function extractMetaInfo(DomCrawler $crawler, Link $currentLink) {
+    protected function extractMetaInfo(DomCrawler $crawler, Link $currentLink)
+    {
         $currentLink->setMetaInfo('title', '');
         $currentLink->setMetaInfo('metaKeywords', '');
         $currentLink->setMetaInfo('metaDescription', '');
@@ -355,7 +370,7 @@ class Crawler {
         $crawler->filterXPath('//meta[@name="keywords"]')->each(function (DomCrawler $node) use (&$currentLink) {
             $currentLink->setMetaInfo('metaKeywords', trim($node->attr('content')));
         });
-        $crawler->filterXPath('//link[@rel="canonical"]')->each(function(DomCrawler $node) use (&$currentLink) {
+        $crawler->filterXPath('//link[@rel="canonical"]')->each(function (DomCrawler $node) use (&$currentLink) {
             $currentLink->setMetaInfo('canonicalLink', trim($node->attr('href')));
         });
 
@@ -382,7 +397,8 @@ class Crawler {
      * extract headers array for the link url
      * @return array
      */
-    protected function extractHeaders(Link $linkObj){
+    protected function extractHeaders(Link $linkObj)
+    {
         stream_context_set_default([
             'ssl' => [
                 'verify_peer' => false,
@@ -393,15 +409,15 @@ class Crawler {
         $absoluteUrl = $linkObj->getAbsoluteUrl();
         if (filter_var($absoluteUrl, FILTER_VALIDATE_URL) === false) {
             throw new InvalidUrlException("Invalid Url: {$absoluteUrl}");
-        }                
-        $headersArrRaw = @get_headers($absoluteUrl, 1); 
+        }
+        $headersArrRaw = @get_headers($absoluteUrl, 1);
         
-        if($headersArrRaw === false){
+        if ($headersArrRaw === false) {
             throw new InvalidUrlException("cannot get headers for {$absoluteUrl}");
         }
         
-        $headersArr = array_change_key_case($headersArrRaw, CASE_LOWER);        
-        if(isset($headersArr[0]) === true && strpos($headersArr[0], 'HTTP/') !== false){
+        $headersArr = array_change_key_case($headersArrRaw, CASE_LOWER);
+        if (isset($headersArr[0]) === true && strpos($headersArr[0], 'HTTP/') !== false) {
             $statusStmt = $headersArr[0];
             $statusParts = explode(' ', $statusStmt);
             $headersArr['status-code'] = $statusParts[1];
@@ -409,12 +425,12 @@ class Crawler {
             $statusIndex = strrpos($statusStmt, $statusParts[1])+ strlen($statusParts[1])+1;
             $headersArr['status'] = trim(substr($statusStmt, $statusIndex));
         }
-        if(is_array($headersArr['content-type']) === true){
+        if (is_array($headersArr['content-type']) === true) {
             $headersArr['content-type'] = end($headersArr['content-type']);
         }
         
         return $headersArr;
-    }    
+    }
 
     /**
      * logging activity of the crawler in case logger is associated
@@ -422,10 +438,10 @@ class Crawler {
      * @param string $message
      * @param array $context
      */
-    protected function log($level, $message, array $context = array()) {
+    protected function log($level, $message, array $context = array())
+    {
         if (isset($this->logger) === true) {
             $this->logger->log($level, $message, $context);
         }
     }
-
 }
