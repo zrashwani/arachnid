@@ -35,7 +35,8 @@ before_script:
     - pip install --user codecov
 
 script:
-    - PANTHER_CHROME_DRIVER_BINARY=`which chromedriver` ./vendor/bin/phpunit -c phpunit.xml --coverage-clover=coverage.xml
+    - cd ./vendor/symfony/panther/chromedriver-bin && bash update.sh
+    - ./vendor/bin/phpunit -c phpunit.xml --coverage-clover=coverage.xml
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
