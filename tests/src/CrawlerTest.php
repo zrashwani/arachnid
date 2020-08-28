@@ -371,7 +371,7 @@ class CrawlerTest extends TestCase
         $this->assertEquals(404, $links[$nonFoundUrl]->getStatusCode());
     }
     
-    public function testImageLink()
+    public function testImageLinkWithHeadlessMode()
     {
         $filePath = '/testWithImage.html';
         $crawler = new Crawler(self::$baseTestUrl.$filePath, 3);

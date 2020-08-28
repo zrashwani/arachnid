@@ -250,7 +250,7 @@ class Crawler
             if ($this->headlessBrowserEnabled === true) {
                 $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_HEADLESS_BROWSER, $this->config);
             } else {
-                $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_GOUTTE, $this->config);
+                $scrapClient = CrawlingFactory::create(CrawlingFactory::TYPE_HTTP_CLIENT, $this->config);
             }
             $this->setScrapClient($scrapClient);
         }

@@ -69,7 +69,7 @@ or creating Goutte scrapper with desired options:
             'timeout' => 30,
         );
                         
-        $scrapperClient = \Arachnid\Adapters\CrawlingFactory::create(\Arachnid\Adapters\CrawlingFactory::TYPE_GOUTTE,$options);
+        $scrapperClient = \Arachnid\Adapters\CrawlingFactory::create(\Arachnid\Adapters\CrawlingFactory::TYPE_HTTP_CLIENT, $options);
         $crawler->setScrapClient($scrapperClient);
 ```
 
