@@ -3,6 +3,10 @@
 This library will crawl all unique internal links found on a given website
 up to a specified maximum page depth.
 
+This library is using [_symfony/panther_](https://github.com/symfony/panther) & [FriendsOfPHP/Goutte](https://github.com/FriendsOfPHP/Goutte) libraries to scrap site pages and extract main SEO-related info, including: 
+`title`, `h1 elements`, `h2 elements`, `statusCode`, `contentType`, `meta description`, `meta keyword` and `canonicalLink`.
+
+
 This library is based on the original blog post by Zeid Rashwani here:
 
 <http://zrashwani.com/simple-web-spider-php-goutte>
@@ -30,6 +34,7 @@ Then run `composer install`.
 
 ## Getting Started
 
+### Basic Usage:
 Here's a quick demo to crawl a website:
 ```php
     <?php
@@ -37,39 +42,48 @@ Here's a quick demo to crawl a website:
 
     $url = 'http://www.example.com';
     $linkDepth = 3;
-    // Initiate crawl  
-    // By default it will use GoutteClient, 
-    // If headless browser mode enabled, it will use Chrome engine in background useful to get javacript-based content
+    // Initiate crawl, by default it will use http client (GoutteClient), 
     $crawler = new \Arachnid\Crawler($url, $linkDepth);
-    $crawler->enableHeadlessBrowserMode()
-            ->traverse();
+    $crawler->traverse();
 
     // Get link data
     $links = $crawler->getLinksArray(); //to get links as objects use getLinks() method
     print_r($links);
 ```
+
+### Enabling Headless Browser mode:
+
+Headless browser mode can be enabled, so it will use Chrome engine in background which is useful to get contents of javacript-based sites.
+
+`enableHeadlessBrowserMode` method set the scraping adapter used to be `PantherChromeAdapter` which is based on [Symfony Panther](https://github.com/symfony/panther) library: 
+```php
+    $crawler = new \Arachnid\Crawler($url, $linkDepth);
+    $crawler->enableHeadlessBrowserMode()
+            ->traverse()
+            ->getLinksArray();
+```
+In order to use this, you need to have [chrome-driver](https://sites.google.com/a/chromium.org/chromedriver/) installed on your machine.
     
 ## Advanced Usage:
-   There are other options you can set to the crawler:
 
-
-   Set additional options to underlying guzzle client, by specifying array of options in constructor 
-or creating Goutte scrapper with desired options:
+   Set additional options to underlying http client, by specifying array of options in constructor 
+or creating Http client scrapper with desired options:
 
 ```php
     <?php
+        use \Arachnid\Adapters\CrawlingFactory;
         //third parameter is the options used to configure http client
-        $crawler = new \Arachnid\Crawler('http://github.com', 2, 
-                                 ['auth_basic' => array('username', 'password')]);
+        $clientOptions = ['auth_basic' => array('username', 'password')];
+        $crawler = new \Arachnid\Crawler('http://github.com', 2, $clientOptions);
            
-        //or using separate method `setCrawlerOptions`
+        //or by creating and setting scrap client
         $options = array(
             'verify_host' => false,
             'verify_peer' => false,
             'timeout' => 30,
         );
                         
-        $scrapperClient = \Arachnid\Adapters\CrawlingFactory::create(\Arachnid\Adapters\CrawlingFactory::TYPE_HTTP_CLIENT, $options);
+        $scrapperClient = CrawlingFactory::create(CrawlingFactory::TYPE_HTTP_CLIENT, $options);
         $crawler->setScrapClient($scrapperClient);
 ```
 
@@ -84,14 +98,15 @@ or creating Goutte scrapper with desired options:
     $crawler->setLogger($logger);
     ?>
 ```
+
    You can set crawler to visit only pages with specific criteria by specifying callback closure using `filterLinks` method:
 
 ```php
     <?php
     //filter links according to specific callback as closure
-    $links = $crawler->filterLinks(function($link){
-                        //crawling only blog links
-                        return (bool)preg_match('/.*\/blog.*$/u',$link); 
+    $links = $crawler->filterLinks(function($link) {
+                        //crawling only links with /blog/ prefix
+                        return (bool)preg_match('/.*\/blog.*$/u', $link); 
                     })
                     ->traverse()
                     ->getLinks();
@@ -110,6 +125,9 @@ or creating Goutte scrapper with desired options:
    
     //getting links for specific depth
     $depth2Links = $collection->getByDepth(2);
+
+    //getting external links inside site
+    $externalLinks = $collection->getExternalLinks();
 ```
 
 ## How to Contribute
