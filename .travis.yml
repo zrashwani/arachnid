@@ -4,7 +4,6 @@ addons:
   
 jobs:
   include:
-    - php: '7.1'
     - php: '7.2'
     - php: '7.3'
     - php: '7.4'
@@ -26,8 +25,7 @@ before_script:
     - composer self-update
     - composer install --dev
     - pip install --user codecov
-    - cd ./vendor/symfony/panther/chromedriver-bin && bash update.sh
-    - cd ../../../..
+    - ./vendor/bin/bdi driver:chromedriver drivers
 
 script:
     - ./vendor/bin/phpunit -c phpunit.xml --coverage-clover=coverage.xml
