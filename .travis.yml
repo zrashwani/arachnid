@@ -13,14 +13,13 @@ cache:
   directories:
     - $HOME/.composer/cache
 
-before_script:
-  - phpenv config-rm xdebug.ini
 
 install:
   - composer update
      
   
 before_script: 
+    - phpenv config-rm xdebug.ini
     - cp phpunit.xml.dist phpunit.xml
     - composer self-update
     - composer install --dev
