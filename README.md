@@ -62,7 +62,12 @@ Headless browser mode can be enabled, so it will use Chrome engine in background
             ->traverse()
             ->getLinksArray();
 ```
-In order to use this, you need to have [chrome-driver](https://sites.google.com/a/chromium.org/chromedriver/) installed on your machine.
+
+In order to use this, you need to have [chrome-driver](https://sites.google.com/a/chromium.org/chromedriver/) installed on your machine, you can use `dbrekelmans/browser-driver-installer` to install chromedriver locally: 
+```
+composer require --dev dbrekelmans/bdi
+./vendor/bin/bdi driver:chromedriver drivers
+```
     
 ## Advanced Usage:
 
