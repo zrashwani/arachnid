@@ -88,6 +88,12 @@ class Crawler
     private $headlessBrowserEnabled;
 
     /**
+     * Links' container
+     * @var array<string,Link>
+     */
+    private $links;
+
+    /**
      * Constructor
      * @param string $baseUrl base url to be crawled
      * @param int    $maxDepth depth of links to be crawled
