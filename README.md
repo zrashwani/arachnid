@@ -15,7 +15,6 @@ Josh Lockhart adapted the original blog post's code (with permission)
 for Composer and Packagist and updated the syntax to conform with
 the PSR-2 coding standard.
 
-[![SymfonyInsight](https://insight.symfony.com/projects/a2309c5b-d961-4633-8fb4-162dde3532e4/mini.svg)](https://insight.symfony.com/projects/a2309c5b-d961-4633-8fb4-162dde3532e4)
 [![Build Status](https://travis-ci.com/zrashwani/arachnid.svg?branch=master)](https://travis-ci.com/zrashwani/arachnid)
 [![codecov](https://codecov.io/gh/zrashwani/arachnid/branch/master/graph/badge.svg)](https://codecov.io/gh/zrashwani/arachnid)
 
