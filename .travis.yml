@@ -15,7 +15,6 @@ cache:
 
 before_install:
   - sudo apt-get update 
-  - sudo apt-get install -y libargon2-0
 
 install:
   - composer update
