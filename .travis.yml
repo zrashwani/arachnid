@@ -1,4 +1,5 @@
 language: php
+dist: bionic
 addons:
   chrome: stable
   
@@ -12,7 +13,6 @@ jobs:
 cache:
   directories:
     - $HOME/.composer/cache
-
 
 install:
   - composer update

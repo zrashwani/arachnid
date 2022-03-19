@@ -18,6 +18,9 @@ the PSR-2 coding standard.
 [![Build Status](https://travis-ci.com/zrashwani/arachnid.svg?branch=master)](https://travis-ci.com/zrashwani/arachnid)
 [![codecov](https://codecov.io/gh/zrashwani/arachnid/branch/master/graph/badge.svg)](https://codecov.io/gh/zrashwani/arachnid)
 
+## Sponsored By
+[<img src="./oxylabs.png" width="300px"/>](https://oxylabs.go2cloud.org/aff_c?offer_id=7&aff_id=447&url_id=32)
+
 ## How to Install
 
 You can install this library with [Composer][composer]. Drop this into your `composer.json`
