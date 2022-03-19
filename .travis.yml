@@ -1,4 +1,5 @@
 language: php
+dist: bionic
 addons:
   chrome: stable
   
@@ -12,9 +13,6 @@ jobs:
 cache:
   directories:
     - $HOME/.composer/cache
-
-before_install:
-  - sudo apt-get update 
 
 install:
   - composer update
