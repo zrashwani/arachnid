@@ -19,6 +19,7 @@ install:
      
   
 before_script: 
+    - apt-get install -y libargon2-0
     - phpenv config-rm xdebug.ini
     - cp phpunit.xml.dist phpunit.xml
     - composer self-update
