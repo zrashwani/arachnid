@@ -55,7 +55,7 @@ Here's a quick demo to crawl a website:
 
 ### Enabling Headless Browser mode:
 
-Headless browser mode can be enabled, so it will use Chrome engine in background which is useful to get contents of javacript-based sites.
+Headless browser mode can be enabled, so it will use Chrome engine in the background which is useful to get contents of JavaScript-based sites.
 
 `enableHeadlessBrowserMode` method set the scraping adapter used to be `PantherChromeAdapter` which is based on [Symfony Panther](https://github.com/symfony/panther) library: 
 ```php
